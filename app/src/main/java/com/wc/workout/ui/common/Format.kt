@@ -1,6 +1,7 @@
 package com.wc.workout.ui.common
 
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -25,3 +26,11 @@ fun Double.kgLabel(): String = String.format(Locale.US, "%.1f", this)
 /** 输入框预填用：整数不带小数，如 "60" */
 fun Double.displayKg(): String =
     if (this % 1.0 == 0.0) toInt().toString() else toString()
+
+/** 当天 00:00 的 epoch millis（本地时区） */
+fun startOfDayMillis(d: LocalDate): Long =
+    d.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+/** 次日 00:00 的 epoch millis（本地时区），用于 BETWEEN 的上界 */
+fun endOfDayMillisExclusive(d: LocalDate): Long =
+    d.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
