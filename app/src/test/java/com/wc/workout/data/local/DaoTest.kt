@@ -1,0 +1,136 @@
+package com.wc.workout.data.local
+
+import android.content.Context
+import android.database.sqlite.SQLiteConstraintException
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class DaoTest {
+
+    private lateinit var db: AppDatabase
+
+    @Before
+    fun setup() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+    }
+
+    @After
+    fun teardown() {
+        db.close()
+    }
+
+    @Test
+    fun weightUpdateKeepsOneRowPerDay() = runBlocking {
+        val dao = db.weightDao()
+        dao.insert(WeightRecord(dateEpochDay = 100, weightKg = 70.0, recordedAt = 1_000))
+        val existing = dao.getByDate(100)!!
+        dao.update(existing.copy(weightKg = 71.5, recordedAt = 2_000))
+
+        val rows = dao.getAll()
+        assertEquals(1, rows.size)
+        assertEquals(71.5, rows[0].weightKg, 0.001)
+        assertEquals(2_000, rows[0].recordedAt)
+        assertEquals(existing.id, rows[0].id)
+    }
+
+    @Test
+    fun weightUniqueIndexRejectsSecondRowSameDay() {
+        val dao = db.weightDao()
+        runBlocking { dao.insert(WeightRecord(dateEpochDay = 100, weightKg = 70.0, recordedAt = 1_000)) }
+        assertThrows(SQLiteConstraintException::class.java) {
+            runBlocking { dao.insert(WeightRecord(dateEpochDay = 100, weightKg = 72.0, recordedAt = 2_000)) }
+        }
+    }
+
+    @Test
+    fun observeBetweenFiltersByRange() = runBlocking {
+        val dao = db.weightDao()
+        dao.insert(WeightRecord(dateEpochDay = 99, weightKg = 70.0, recordedAt = 1))
+        dao.insert(WeightRecord(dateEpochDay = 100, weightKg = 70.5, recordedAt = 2))
+        dao.insert(WeightRecord(dateEpochDay = 131, weightKg = 71.0, recordedAt = 3))
+        val rows = dao.observeBetween(100, 130).first()
+        assertEquals(1, rows.size)
+        assertEquals(100L, rows[0].dateEpochDay)
+    }
+
+    @Test
+    fun sessionDeleteCascadesSets() = runBlocking {
+        val sessionId = db.workoutDao().insertSession(WorkoutSession(title = "推日", startTime = 1_000))
+        val exerciseId = db.exerciseDao().insert(Exercise(name = "卧推", createdAt = 1))
+        db.workoutDao().insertSet(WorkoutSet(sessionId = sessionId, exerciseId = exerciseId, weightKg = 60.0, reps = 8, exerciseOrder = 1, setOrder = 1))
+        db.workoutDao().insertSet(WorkoutSet(sessionId = sessionId, exerciseId = exerciseId, weightKg = 60.0, reps = 6, exerciseOrder = 1, setOrder = 2))
+
+        db.workoutDao().deleteSession(sessionId)
+
+        assertTrue(db.workoutDao().getSetsForSession(sessionId).isEmpty())
+        assertTrue(db.workoutDao().getAllSets().isEmpty())
+    }
+
+    @Test
+    fun exerciseDeleteRestrictedWhenReferenced() {
+        val exerciseId = runBlocking { db.exerciseDao().insert(Exercise(name = "深蹲", createdAt = 1)) }
+        val sessionId = runBlocking { db.workoutDao().insertSession(WorkoutSession(title = "腿日", startTime = 1_000)) }
+        runBlocking {
+            db.workoutDao().insertSet(WorkoutSet(sessionId = sessionId, exerciseId = exerciseId, weightKg = 100.0, reps = 5, exerciseOrder = 1, setOrder = 1))
+        }
+        assertThrows(SQLiteConstraintException::class.java) {
+            runBlocking { db.exerciseDao().deleteById(exerciseId) }
+        }
+    }
+
+    @Test
+    fun observeOngoingReturnsOnlyNullEndSession() = runBlocking {
+        val dao = db.workoutDao()
+        dao.insertSession(WorkoutSession(title = "旧训练", startTime = 1_000, endTime = 2_000))
+        val ongoingId = dao.insertSession(WorkoutSession(title = "进行中", startTime = 3_000))
+        assertEquals(ongoingId, dao.observeOngoing().first()!!.id)
+        dao.setEndTime(ongoingId, 4_000)
+        assertNull(dao.observeOngoing().first())
+    }
+
+    @Test
+    fun lastSessionQueryExcludesCurrentAndOrdersByStartTime() = runBlocking {
+        val dao = db.workoutDao()
+        val e = db.exerciseDao().insert(Exercise(name = "硬拉", createdAt = 1))
+        val s1 = dao.insertSession(WorkoutSession(title = "一", startTime = 1_000))
+        val s2 = dao.insertSession(WorkoutSession(title = "二", startTime = 2_000))
+        val s3 = dao.insertSession(WorkoutSession(title = "三", startTime = 3_000))
+        dao.insertSet(WorkoutSet(sessionId = s1, exerciseId = e, weightKg = 80.0, reps = 5, exerciseOrder = 1, setOrder = 1))
+        dao.insertSet(WorkoutSet(sessionId = s2, exerciseId = e, weightKg = 90.0, reps = 5, exerciseOrder = 1, setOrder = 1))
+
+        assertEquals(s2, dao.findLastSessionIdWithExercise(e, s3))
+        assertEquals(s1, dao.findLastSessionIdWithExercise(e, s2))
+    }
+
+    @Test
+    fun getSetsWithExerciseNamesJoinsName() = runBlocking {
+        val dao = db.workoutDao()
+        val e = db.exerciseDao().insert(Exercise(name = "卧推", createdAt = 1))
+        val s = dao.insertSession(WorkoutSession(title = "推日", startTime = 1_000))
+        dao.insertSet(WorkoutSet(sessionId = s, exerciseId = e, weightKg = 60.0, reps = 8, exerciseOrder = 1, setOrder = 1))
+        dao.insertSet(WorkoutSet(sessionId = s, exerciseId = e, weightKg = 60.0, reps = 10, exerciseOrder = 1, setOrder = 2))
+
+        val rows = dao.getSetsWithExerciseNames(s)
+        assertEquals(2, rows.size)
+        assertEquals("卧推", rows[0].exerciseName)
+        assertEquals(60.0, rows[0].set.weightKg, 0.001)
+        assertEquals(2, rows[1].set.setOrder)
+    }
+}
