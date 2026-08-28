@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +33,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,9 +41,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.wc.workout.AppContainer
+import com.wc.workout.data.local.SetWithExercise
 import com.wc.workout.data.local.WeightRecord
 import com.wc.workout.data.local.WorkoutSession
 import com.wc.workout.ui.common.WeightEditDialog
+import com.wc.workout.ui.common.displayKg
+import com.wc.workout.ui.common.formatDuration
 import com.wc.workout.ui.common.formatTime
 import com.wc.workout.ui.common.kgLabel
 import com.wc.workout.ui.common.viewModelWith
@@ -48,6 +54,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -222,10 +229,7 @@ private fun DayDetailSheet(date: LocalDate, vm: CalendarViewModel, onDismiss: ()
                 )
             } else {
                 daySessions.forEach { session ->
-                    Text(
-                        "${session.title}（${formatTime(session.startTime)} 开始）",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    SessionCard(session = session, vm = vm, onDeleted = { refresh++ })
                 }
             }
         }
@@ -236,6 +240,64 @@ private fun DayDetailSheet(date: LocalDate, vm: CalendarViewModel, onDismiss: ()
             initialKg = dayWeight?.weightKg,
             onSaved = { vm.saveWeight(date, it); refresh++ },
             onDismiss = { showWeightDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun SessionCard(session: WorkoutSession, vm: CalendarViewModel, onDeleted: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var expanded by remember { mutableStateOf(false) }
+    var detail by remember { mutableStateOf<List<SetWithExercise>>(emptyList()) }
+    var showDelete by remember { mutableStateOf(false) }
+
+    ElevatedCard(
+        Modifier.fillMaxWidth().clickable {
+            expanded = !expanded
+            if (expanded && detail.isEmpty()) {
+                scope.launch { detail = vm.sessionDetail(session.id) }
+            }
+        }
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(session.title, style = MaterialTheme.typography.titleMedium)
+            val endText = session.endTime?.let { formatTime(it) } ?: "进行中"
+            val durationSec = ((session.endTime ?: System.currentTimeMillis()) - session.startTime) / 1000
+            Text(
+                "${formatTime(session.startTime)} – $endText · ${formatDuration(durationSec)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (expanded) {
+                detail.groupBy { it.set.exerciseOrder }.toSortedMap().forEach { (_, rows) ->
+                    Text(
+                        "${rows.first().exerciseName}：" +
+                            rows.joinToString(", ") { "${it.set.weightKg.displayKg()}kg×${it.set.reps}" },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                TextButton(onClick = { showDelete = true }) {
+                    Text("删除该次记录", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+
+    if (showDelete) {
+        AlertDialog(
+            onDismissRequest = { showDelete = false },
+            title = { Text("删除记录") },
+            text = { Text("删除「${session.title}」及其全部组记录？不可恢复。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        vm.deleteSession(session.id)
+                        showDelete = false
+                        onDeleted()
+                    }
+                }) { Text("删除") }
+            },
+            dismissButton = { TextButton(onClick = { showDelete = false }) { Text("取消") } }
         )
     }
 }

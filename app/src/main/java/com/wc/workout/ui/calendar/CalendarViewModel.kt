@@ -2,6 +2,7 @@ package com.wc.workout.ui.calendar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wc.workout.data.local.SetWithExercise
 import com.wc.workout.data.local.WeightRecord
 import com.wc.workout.data.local.WorkoutSession
 import com.wc.workout.data.repository.WeightRepository
@@ -60,4 +61,9 @@ class CalendarViewModel(
         if (kg <= 0.0) return
         viewModelScope.launch { weightRepo.saveWeight(date, kg) }
     }
+
+    suspend fun sessionDetail(sessionId: Long): List<SetWithExercise> =
+        workoutRepo.getSetsWithExerciseNames(sessionId)
+
+    suspend fun deleteSession(id: Long) = workoutRepo.abandonSession(id)
 }
