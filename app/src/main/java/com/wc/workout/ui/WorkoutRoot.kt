@@ -1,7 +1,5 @@
 package com.wc.workout.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -15,7 +13,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,6 +25,7 @@ import com.wc.workout.ui.calendar.CalendarScreen
 import com.wc.workout.ui.home.HomeScreen
 import com.wc.workout.ui.library.ExerciseLibraryScreen
 import com.wc.workout.ui.trend.TrendScreen
+import com.wc.workout.ui.workout.WorkoutSessionScreen
 
 private data class BottomTab(val route: String, val label: String, val icon: @Composable () -> Unit)
 
@@ -72,7 +70,7 @@ fun WorkoutRoot(container: AppContainer) {
             modifier = Modifier.padding(padding)
         ) {
             composable("home") {
-                HomeScreen(container)
+                HomeScreen(container, onStartWorkout = { id -> navController.navigate("workout/$id") })
             }
             composable("calendar") { CalendarScreen(container) }
             composable("library") { ExerciseLibraryScreen(container) }
@@ -82,16 +80,8 @@ fun WorkoutRoot(container: AppContainer) {
                 arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
             ) { entry ->
                 val sessionId = entry.arguments?.getLong("sessionId") ?: 0L
-                WorkoutSessionPlaceholder(sessionId)
+                WorkoutSessionScreen(container, sessionId, onFinished = { navController.popBackStack() })
             }
         }
-    }
-}
-
-/** Task 9 会替换为真实训练页 */
-@Composable
-private fun WorkoutSessionPlaceholder(sessionId: Long) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("训练进行中（sessionId=$sessionId）")
     }
 }

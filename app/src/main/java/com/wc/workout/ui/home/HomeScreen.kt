@@ -32,11 +32,13 @@ import com.wc.workout.ui.common.kgLabel
 import com.wc.workout.ui.common.viewModelWith
 
 @Composable
-fun HomeScreen(container: AppContainer) {
+fun HomeScreen(container: AppContainer, onStartWorkout: (Long) -> Unit) {
     val vm: HomeViewModel = viewModelWith {
         HomeViewModel(container.weightRepository, container.workoutRepository)
     }
     val weight by vm.todayWeight.collectAsState()
+    val ongoing by vm.ongoingSession.collectAsState()
+    var showTitleDialog by remember { mutableStateOf(false) }
 
     Column(
         Modifier.fillMaxSize().padding(16.dp),
@@ -44,6 +46,26 @@ fun HomeScreen(container: AppContainer) {
     ) {
         Text("训练", style = MaterialTheme.typography.headlineMedium)
         TodayWeightCard(weight = weight, onSave = vm::saveWeight)
+
+        val current = ongoing
+        if (current != null) {
+            OngoingCard(current) { onStartWorkout(current.id) }
+        } else {
+            Button(onClick = { showTitleDialog = true }, modifier = Modifier.fillMaxWidth()) {
+                Text("开始健身")
+            }
+        }
+    }
+
+    if (showTitleDialog) {
+        StartWorkoutDialog(
+            onLoadTitles = { vm.recentTitles() },
+            onConfirm = { title ->
+                showTitleDialog = false
+                vm.startSession(title, onStarted = onStartWorkout)
+            },
+            onDismiss = { showTitleDialog = false }
+        )
     }
 }
 
