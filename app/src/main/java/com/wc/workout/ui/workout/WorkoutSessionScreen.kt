@@ -121,7 +121,7 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
     }
 
     if (showAddSheet) {
-        AddExerciseSheet(vm = vm, onDismiss = { showAddSheet = false })
+        AddExerciseSheet(vm = vm, onDismiss = { showAddSheet = false; vm.exerciseQuery.value = "" })
     }
 
     editingSet?.let { set ->

@@ -72,7 +72,7 @@ fun AddExerciseSheet(vm: WorkoutSessionViewModel, onDismiss: () -> Unit) {
                     ListItem(
                         headlineContent = { Text(ex.name) },
                         modifier = Modifier.clickable {
-                            scope.launch { if (vm.addPendingExercise(ex.id)) onDismiss() }
+                            scope.launch { vm.addPendingExercise(ex.id); onDismiss() }
                         }
                     )
                 }

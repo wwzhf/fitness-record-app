@@ -65,9 +65,11 @@ class DaoTest {
         dao.insert(WeightRecord(dateEpochDay = 99, weightKg = 70.0, recordedAt = 1))
         dao.insert(WeightRecord(dateEpochDay = 100, weightKg = 70.5, recordedAt = 2))
         dao.insert(WeightRecord(dateEpochDay = 131, weightKg = 71.0, recordedAt = 3))
+        dao.insert(WeightRecord(dateEpochDay = 130, weightKg = 70.8, recordedAt = 4))
         val rows = dao.observeBetween(100, 130).first()
-        assertEquals(1, rows.size)
+        assertEquals(2, rows.size)
         assertEquals(100L, rows[0].dateEpochDay)
+        assertEquals(130L, rows[1].dateEpochDay)
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.wc.workout.ui.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wc.workout.data.local.WeightRecord
@@ -19,16 +20,18 @@ class HomeViewModel(
     private val workoutRepo: WorkoutRepository,
 ) : ViewModel() {
 
-    private val today: LocalDate = LocalDate.now()
-
-    val todayWeight: StateFlow<WeightRecord?> = weightRepo.observeBetween(today, today)
-        .map { it.lastOrNull() }
+    val todayWeight: StateFlow<WeightRecord?> = weightRepo.observeAll()
+        .map { list -> list.lastOrNull { it.dateEpochDay == LocalDate.now().toEpochDay() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun saveWeight(kgText: String) {
         val kg = kgText.toDoubleOrNull() ?: return
         if (kg <= 0.0) return
-        viewModelScope.launch { weightRepo.saveWeight(today, kg) }
+        val today = LocalDate.now()
+        viewModelScope.launch {
+            runCatching { weightRepo.saveWeight(today, kg) }
+                .onFailure { Log.w("HomeViewModel", "saveWeight failed", it) }
+        }
     }
 
     val ongoingSession: StateFlow<WorkoutSession?> = workoutRepo.observeOngoing()
@@ -36,14 +39,18 @@ class HomeViewModel(
 
     fun startSession(title: String, onStarted: (Long) -> Unit) {
         viewModelScope.launch {
-            val finalTitle = title.ifBlank { defaultTitle() }
-            onStarted(workoutRepo.startSession(finalTitle))
+            runCatching {
+                val finalTitle = title.ifBlank { defaultTitle() }
+                onStarted(workoutRepo.startSession(finalTitle))
+            }.onFailure { Log.w("HomeViewModel", "startSession failed", it) }
         }
     }
 
     /** Task 9 会扩展：开始健身、进行中会话 */
     suspend fun recentTitles(): List<String> = workoutRepo.recentTitles()
 
-    fun defaultTitle(): String =
-        today.format(DateTimeFormatter.ISO_LOCAL_DATE) + " 训练"
+    fun defaultTitle(): String {
+        val today = LocalDate.now()
+        return today.format(DateTimeFormatter.ISO_LOCAL_DATE) + " 训练"
+    }
 }

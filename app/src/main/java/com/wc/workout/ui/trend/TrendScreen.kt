@@ -122,7 +122,7 @@ fun TrendScreen(container: AppContainer) {
                     val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmm").format(LocalDateTime.now())
                     exportLauncher.launch("workout-backup-$stamp.json")
                 }) { Text("导出备份") }
-                OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json")) }) { Text("导入备份") }
+                OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }) { Text("导入备份") }
             }
         }
     }

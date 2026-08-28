@@ -123,7 +123,7 @@ fun ExerciseLibraryScreen(container: AppContainer) {
             initial = query,
             confirmLabel = "创建",
             onConfirm = { name ->
-                if (vm.add(name) is ExerciseNameResult.Duplicate) "已存在同名动作" else null
+                if (runCatching { vm.add(name) }.getOrElse { null } is ExerciseNameResult.Duplicate) "已存在同名动作" else null
             },
             onDismiss = { showAdd = false }
         )
@@ -135,7 +135,7 @@ fun ExerciseLibraryScreen(container: AppContainer) {
             initial = target.name,
             confirmLabel = "保存",
             onConfirm = { name ->
-                if (vm.rename(target.id, name) is ExerciseNameResult.Duplicate) "已存在同名动作" else null
+                if (runCatching { vm.rename(target.id, name) }.getOrElse { null } is ExerciseNameResult.Duplicate) "已存在同名动作" else null
             },
             onDismiss = { renameTarget = null }
         )

@@ -1,5 +1,6 @@
 package com.wc.workout.data.repository
 
+import androidx.room.withTransaction
 import com.wc.workout.data.local.AppDatabase
 import com.wc.workout.data.local.SetWithExercise
 import com.wc.workout.data.local.WorkoutSession
@@ -30,12 +31,12 @@ class WorkoutRepository(private val db: AppDatabase) {
     suspend fun recentTitles(limit: Int = 10): List<String> =
         dao.getRecentSessions(50).map { it.title }.distinct().take(limit)
 
-    suspend fun addSet(sessionId: Long, exerciseId: Long, weightKg: Double, reps: Int): Long {
+    suspend fun addSet(sessionId: Long, exerciseId: Long, weightKg: Double, reps: Int): Long = db.withTransaction {
         val sameExercise = dao.getSetsOfExercise(sessionId, exerciseId)
         val exerciseOrder = sameExercise.firstOrNull()?.exerciseOrder
             ?: ((dao.maxExerciseOrder(sessionId) ?: 0) + 1)
         val setOrder = (dao.maxSetOrder(sessionId, exerciseId) ?: 0) + 1
-        return dao.insertSet(
+        dao.insertSet(
             WorkoutSet(
                 sessionId = sessionId, exerciseId = exerciseId,
                 weightKg = weightKg, reps = reps,
@@ -55,7 +56,7 @@ class WorkoutRepository(private val db: AppDatabase) {
         return dao.getSetsOfExercise(sessionId, exerciseId)
     }
 
-    suspend fun removeExerciseFromSession(sessionId: Long, exerciseId: Long) {
+    suspend fun removeExerciseFromSession(sessionId: Long, exerciseId: Long) = db.withTransaction {
         dao.getSetsOfExercise(sessionId, exerciseId).forEach { dao.deleteSet(it.id) }
     }
 }

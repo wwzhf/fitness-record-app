@@ -52,7 +52,7 @@ class BackupRepository(private val db: AppDatabase) {
         val exerciseIds = data.exercises.mapIndexed { idx, eb ->
             val existing = exerciseDao.findByName(eb.name)
             val id = existing?.id
-                ?: exerciseDao.insert(Exercise(name = eb.name, createdAt = eb.createdAt))
+                ?: exerciseDao.insert(Exercise(name = eb.name, createdAt = eb.createdAt, isArchived = eb.isArchived))
             if (existing != null && existing.isArchived && idx in referencedExerciseIdx) {
                 exerciseDao.setArchived(id, false)
             }

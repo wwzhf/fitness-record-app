@@ -1,5 +1,6 @@
 package com.wc.workout.data.repository
 
+import androidx.room.withTransaction
 import com.wc.workout.data.local.AppDatabase
 import com.wc.workout.data.local.Exercise
 import kotlinx.coroutines.flow.Flow
@@ -17,16 +18,26 @@ class ExerciseRepository(private val db: AppDatabase) {
 
     suspend fun addExercise(name: String): ExerciseNameResult {
         val trimmed = name.trim()
-        if (dao.findByName(trimmed) != null) return ExerciseNameResult.Duplicate
-        return ExerciseNameResult.Success(dao.insert(Exercise(name = trimmed, createdAt = System.currentTimeMillis())))
+        return db.withTransaction {
+            if (dao.findByName(trimmed) != null) {
+                ExerciseNameResult.Duplicate
+            } else {
+                ExerciseNameResult.Success(dao.insert(Exercise(name = trimmed, createdAt = System.currentTimeMillis())))
+            }
+        }
     }
 
     suspend fun rename(id: Long, newName: String): ExerciseNameResult {
         val trimmed = newName.trim()
-        val existing = dao.findByName(trimmed)
-        if (existing != null && existing.id != id) return ExerciseNameResult.Duplicate
-        dao.rename(id, trimmed)
-        return ExerciseNameResult.Success(id)
+        return db.withTransaction {
+            val existing = dao.findByName(trimmed)
+            if (existing != null && existing.id != id) {
+                ExerciseNameResult.Duplicate
+            } else {
+                dao.rename(id, trimmed)
+                ExerciseNameResult.Success(id)
+            }
+        }
     }
 
     suspend fun setArchived(id: Long, archived: Boolean) = dao.setArchived(id, archived)

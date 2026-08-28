@@ -1,5 +1,6 @@
 package com.wc.workout.ui.workout
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wc.workout.data.local.Exercise
@@ -58,26 +59,48 @@ class WorkoutSessionViewModel(
 
     /** 新建动作入库；重名返回 null */
     suspend fun createExercise(name: String): Exercise? =
-        when (val r = exerciseRepo.addExercise(name)) {
-            is ExerciseNameResult.Success -> exerciseRepo.getById(r.id)
-            ExerciseNameResult.Duplicate -> null
-        }
+        runCatching {
+            when (val r = exerciseRepo.addExercise(name)) {
+                is ExerciseNameResult.Success -> exerciseRepo.getById(r.id)
+                ExerciseNameResult.Duplicate -> null
+            }
+        }.getOrElse { Log.w("WorkoutSessionViewModel", "createExercise failed", it); null }
 
     suspend fun addSet(exerciseId: Long, weightKg: Double, reps: Int) {
-        workoutRepo.addSet(sessionId, exerciseId, weightKg, reps)
+        runCatching { workoutRepo.addSet(sessionId, exerciseId, weightKg, reps) }
+            .onFailure { Log.w("WorkoutSessionViewModel", "addSet failed", it) }
         refresh()
     }
 
-    suspend fun updateSet(set: WorkoutSet) { workoutRepo.updateSet(set); refresh() }
-    suspend fun deleteSet(id: Long) { workoutRepo.deleteSet(id); refresh() }
+    suspend fun updateSet(set: WorkoutSet) {
+        runCatching { workoutRepo.updateSet(set) }
+            .onFailure { Log.w("WorkoutSessionViewModel", "updateSet failed", it) }
+        refresh()
+    }
+
+    suspend fun deleteSet(id: Long) {
+        runCatching { workoutRepo.deleteSet(id) }
+            .onFailure { Log.w("WorkoutSessionViewModel", "deleteSet failed", it) }
+        refresh()
+    }
+
     suspend fun removeExercise(exerciseId: Long) {
-        workoutRepo.removeExerciseFromSession(sessionId, exerciseId)
+        runCatching { workoutRepo.removeExerciseFromSession(sessionId, exerciseId) }
+            .onFailure { Log.w("WorkoutSessionViewModel", "removeExercise failed", it) }
+        pendingExerciseIds.value = pendingExerciseIds.value - exerciseId
         refresh()
     }
 
     suspend fun lastPerformance(exerciseId: Long): List<WorkoutSet> =
         workoutRepo.lastPerformance(exerciseId, sessionId)
 
-    suspend fun endSession() = workoutRepo.endSession(sessionId)
-    suspend fun abandon() = workoutRepo.abandonSession(sessionId)
+    suspend fun endSession() {
+        runCatching { workoutRepo.endSession(sessionId) }
+            .onFailure { Log.w("WorkoutSessionViewModel", "endSession failed", it) }
+    }
+
+    suspend fun abandon() {
+        runCatching { workoutRepo.abandonSession(sessionId) }
+            .onFailure { Log.w("WorkoutSessionViewModel", "abandon failed", it) }
+    }
 }

@@ -1,5 +1,6 @@
 package com.wc.workout.ui.calendar
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wc.workout.data.local.SetWithExercise
@@ -59,11 +60,17 @@ class CalendarViewModel(
     fun saveWeight(date: LocalDate, kgText: String) {
         val kg = kgText.toDoubleOrNull() ?: return
         if (kg <= 0.0) return
-        viewModelScope.launch { weightRepo.saveWeight(date, kg) }
+        viewModelScope.launch {
+            runCatching { weightRepo.saveWeight(date, kg) }
+                .onFailure { Log.w("CalendarViewModel", "saveWeight failed", it) }
+        }
     }
 
     suspend fun sessionDetail(sessionId: Long): List<SetWithExercise> =
         workoutRepo.getSetsWithExerciseNames(sessionId)
 
-    suspend fun deleteSession(id: Long) = workoutRepo.abandonSession(id)
+    suspend fun deleteSession(id: Long) {
+        runCatching { workoutRepo.abandonSession(id) }
+            .onFailure { Log.w("CalendarViewModel", "deleteSession failed", it) }
+    }
 }
