@@ -48,8 +48,8 @@ android {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
     sourceSets {
-        // Robolectric 本地测试�?test_config.properties �?android_merged_assets 读取
-        // debug 变体的合�?assets，schema 需挂在 debug（test 一并挂上以备设备端测试�?
+        // Robolectric 本地测试按 test_config.properties 的 android_merged_assets 读取
+        // debug 变体的合并 assets，schema 需挂在 debug（test 一并挂上以备设备端测试）
         getByName("debug") {
             assets.srcDir("$projectDir/schemas")
         }
