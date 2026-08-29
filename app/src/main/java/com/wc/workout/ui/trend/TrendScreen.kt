@@ -92,6 +92,11 @@ fun TrendScreen(container: AppContainer) {
                     else -> all.filter { it.dateEpochDay >= today - (r.days ?: 0) + 1 }
                 }
             }
+            Text(
+                "该范围共 ${shown.size} 条记录",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             if (shown.isEmpty()) {
                 Box(
                     Modifier.fillMaxWidth().height(220.dp),

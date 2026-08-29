@@ -50,6 +50,10 @@ class CalendarViewModel(
     fun selectDay(date: LocalDate?) { _selectedDate.value = date }
     fun prevMonth() { _month.value = _month.value.minusMonths(1) }
     fun nextMonth() { _month.value = _month.value.plusMonths(1) }
+    fun goToMonth(year: Int, month: Int) {
+        _month.value = YearMonth.of(year, month)
+        _selectedDate.value = null
+    }
     fun goToday() { _month.value = YearMonth.now(); _selectedDate.value = LocalDate.now() }
 
     suspend fun weightFor(date: LocalDate): WeightRecord? = weightRepo.getByDate(date)

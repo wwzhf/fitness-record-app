@@ -2,6 +2,7 @@ package com.wc.workout.ui.calendar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -40,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -74,6 +77,7 @@ fun CalendarScreen(container: AppContainer, onOpenSession: (Long) -> Unit) {
     val weights by vm.weightsForMonth.collectAsState()
     val sessions by vm.sessionsForMonth.collectAsState()
     val selected by vm.selectedDate.collectAsState()
+    var showMonthPicker by remember { mutableStateOf(false) }
 
     Column(
         Modifier.fillMaxSize().padding(16.dp),
@@ -84,10 +88,10 @@ fun CalendarScreen(container: AppContainer, onOpenSession: (Long) -> Unit) {
                 Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "上月")
             }
             Text(
-                "${month.year}年${month.monthValue}月",
+                "${month.year}年${month.monthValue}月 ▾",
                 style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).clickable { showMonthPicker = true }
             )
             IconButton(onClick = vm::nextMonth) {
                 Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "下月")
@@ -105,11 +109,66 @@ fun CalendarScreen(container: AppContainer, onOpenSession: (Long) -> Unit) {
                 )
             }
         }
-        MonthGrid(month, weights, sessions, onDayClick = vm::selectDay, modifier = Modifier.fillMaxWidth())
+        var dragAccum by remember { mutableFloatStateOf(0f) }
+        MonthGrid(
+            month, weights, sessions,
+            onDayClick = vm::selectDay,
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { dragAccum = 0f },
+                        onDragEnd = {
+                            if (dragAccum < -120f) vm.nextMonth()
+                            else if (dragAccum > 120f) vm.prevMonth()
+                            dragAccum = 0f
+                        }
+                    ) { change, dragAmount ->
+                        dragAccum += dragAmount
+                        change.consume()
+                    }
+                }
+        )
     }
 
     selected?.let { date ->
         DayDetailSheet(date, vm, onDismiss = { vm.selectDay(null) }, onOpenSession = onOpenSession)
+    }
+
+    if (showMonthPicker) {
+        var pickYear by remember { mutableStateOf(month.year) }
+        AlertDialog(
+            onDismissRequest = { showMonthPicker = false },
+            title = { Text("选择年月") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { pickYear-- }) { Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "上一年") }
+                        Text("$pickYear", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { pickYear++ }) { Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "下一年") }
+                    }
+                    for (r in 0..2) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            for (c in 0..3) {
+                                val m = r * 4 + c + 1
+                                val selected = pickYear == month.year && m == month.monthValue
+                                TextButton(
+                                    onClick = {
+                                        vm.goToMonth(pickYear, m)
+                                        showMonthPicker = false
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("${m}月", color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showMonthPicker = false }) { Text("取消") } }
+        )
     }
 }
 
