@@ -93,6 +93,7 @@ class WorkoutSessionViewModelTest {
     fun filteredExercisesFiltersByQuery() = runBlocking {
         exerciseRepo.addExercise("卧推")
         exerciseRepo.addExercise("深蹲")
+        exerciseRepo.addExercise("Bench Press")
         val viewModel = vm(workoutRepo.startSession("测试"))
         // stateIn(WhileSubscribed) 需要活跃订阅者，上游 Room 流才会开始生产
         val collector = launch { viewModel.filteredExercises.collect {} }
@@ -101,9 +102,21 @@ class WorkoutSessionViewModelTest {
             awaitState {
                 viewModel.filteredExercises.value.let { it.size == 1 && it[0].name == "卧推" }
             }
+            // 拉丁字母名：小写查询命中（覆盖 ignoreCase = true 路径）
+            viewModel.exerciseQuery.value = "bench"
+            awaitState {
+                viewModel.filteredExercises.value.let { it.size == 1 && it[0].name == "Bench Press" }
+            }
+            // 大写查询同样命中
+            viewModel.exerciseQuery.value = "BENCH"
+            awaitState {
+                viewModel.filteredExercises.value.let { it.size == 1 && it[0].name == "Bench Press" }
+            }
+            // 空白查询返回全部（中文 + 拉丁）
             viewModel.exerciseQuery.value = " "
             awaitState {
-                viewModel.filteredExercises.value.map { it.name }.toSet() == setOf("卧推", "深蹲")
+                viewModel.filteredExercises.value.map { it.name }.toSet() ==
+                    setOf("卧推", "深蹲", "Bench Press")
             }
         } finally {
             collector.cancelAndJoin()
