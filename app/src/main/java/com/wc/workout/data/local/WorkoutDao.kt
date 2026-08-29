@@ -38,11 +38,9 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_sessions")
     suspend fun getAllSessions(): List<WorkoutSession>
 
-    @Query("DELETE FROM workout_sets")
-    suspend fun deleteAllSets()
-
-    @Query("DELETE FROM workout_sessions")
-    suspend fun deleteAllSessions()
+    /** 删除 [start, end) 内开始的训练（end 为次日零点，须保持开区间） */
+    @Query("DELETE FROM workout_sessions WHERE startTime >= :start AND startTime < :end")
+    suspend fun deleteSessionsBetween(start: Long, end: Long)
 
     @Insert
     suspend fun insertSet(set: WorkoutSet): Long

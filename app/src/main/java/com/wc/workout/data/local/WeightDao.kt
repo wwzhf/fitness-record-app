@@ -17,9 +17,6 @@ interface WeightDao {
     @Query("SELECT * FROM weight_records")
     suspend fun getAll(): List<WeightRecord>
 
-    @Query("DELETE FROM weight_records")
-    suspend fun deleteAll()
-
     @Query("SELECT * FROM weight_records WHERE dateEpochDay = :dateEpochDay LIMIT 1")
     suspend fun getByDate(dateEpochDay: Long): WeightRecord?
 

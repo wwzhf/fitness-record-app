@@ -17,6 +17,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -105,20 +107,70 @@ class BackupTest {
     }
 
     @Test
-    fun importReplacesAllExistingData() = runBlocking {
-        val json = seedSource()
+    fun importPreservesDataOutsideBackupDays() = runBlocking {
+        val json = seedSource() // 备份：1970-01-01 的“推日”与 day=20600 的体重
         val dest = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(), AppDatabase::class.java
         ).allowMainThreadQueries().build()
         // 目标库里预先存在的、备份里没有的数据
         dest.exerciseDao().insert(com.wc.workout.data.local.Exercise(name = "旧动作", createdAt = 1))
-        dest.workoutDao().insertSession(com.wc.workout.data.local.WorkoutSession(title = "旧训练", startTime = 5))
-        dest.weightDao().insert(com.wc.workout.data.local.WeightRecord(dateEpochDay = 1, weightKg = 1.0, recordedAt = 1))
+        val oldStart = LocalDateTime.of(2026, 1, 1, 10, 0)
+            .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        dest.workoutDao().insertSession(
+            com.wc.workout.data.local.WorkoutSession(title = "旧训练", startTime = oldStart)
+        )
+        dest.weightDao().insert(
+            com.wc.workout.data.local.WeightRecord(dateEpochDay = 1, weightKg = 1.0, recordedAt = 1)
+        )
         BackupRepository(dest).import(json)
-        // 备份之外的数据全部被清掉
-        assertEquals(listOf("卧推"), dest.exerciseDao().getAll().map { it.name })
+        // 备份内容写入，备份之外的动作、训练、体重全部保留
+        assertEquals(setOf("卧推", "旧动作"), dest.exerciseDao().getAll().map { it.name }.toSet())
+        val sessions = dest.workoutDao().getAllSessions()
+        assertEquals(setOf("推日", "旧训练"), sessions.map { it.title }.toSet())
+        assertEquals(oldStart, sessions.first { it.title == "旧训练" }.startTime)
+        val weights = dest.weightDao().getAll().associateBy { it.dateEpochDay }
+        assertEquals(2, weights.size)
+        assertEquals(1.0, weights.getValue(1L).weightKg, 0.001)
+        assertEquals(72.0, weights.getValue(20_600L).weightKg, 0.001)
+        dest.close()
+    }
+
+    @Test
+    fun reimportDoesNotDuplicateSessions() = runBlocking {
+        val json = seedSource()
+        val dest = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext(), AppDatabase::class.java
+        ).allowMainThreadQueries().build()
+        BackupRepository(dest).import(json)
+        BackupRepository(dest).import(json)
         assertEquals(1, dest.workoutDao().getAllSessions().size)
-        assertEquals(1, dest.weightDao().getAll().size)
+        assertEquals(1, dest.workoutDao().getAllSets().size)
+        dest.close()
+    }
+
+    @Test
+    fun importOverwritesSameDaySessions() = runBlocking {
+        val json = seedSource() // 备份里也是 1970-01-01（startTime=100，标题“推日”）
+        val dest = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext(), AppDatabase::class.java
+        ).allowMainThreadQueries().build()
+        val e = dest.exerciseDao().insert(com.wc.workout.data.local.Exercise(name = "旧动作", createdAt = 1))
+        val oldSession = dest.workoutDao().insertSession(
+            com.wc.workout.data.local.WorkoutSession(title = "旧", startTime = 50)
+        )
+        dest.workoutDao().insertSet(
+            com.wc.workout.data.local.WorkoutSet(
+                sessionId = oldSession, exerciseId = e, weightKg = 10.0, reps = 5, exerciseOrder = 1, setOrder = 1
+            )
+        )
+        BackupRepository(dest).import(json)
+        // 同一天旧训练被删（组级联删除），只留备份里的那次
+        val sessions = dest.workoutDao().getAllSessions()
+        assertEquals(1, sessions.size)
+        assertEquals("推日", sessions[0].title)
+        val sets = dest.workoutDao().getAllSets()
+        assertEquals(1, sets.size)
+        assertEquals(60.0, sets[0].weightKg, 0.001)
         dest.close()
     }
 

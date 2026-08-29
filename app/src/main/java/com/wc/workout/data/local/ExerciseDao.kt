@@ -34,6 +34,9 @@ interface ExerciseDao {
     @Query("UPDATE exercises SET isArchived = :archived WHERE id = :id")
     suspend fun setArchived(id: Long, archived: Boolean)
 
+    @Query("UPDATE exercises SET createdAt = :createdAt, isArchived = :isArchived WHERE id = :id")
+    suspend fun overwriteMeta(id: Long, createdAt: Long, isArchived: Boolean)
+
     @Query("SELECT COUNT(*) FROM workout_sets WHERE exerciseId = :id")
     suspend fun countSetsForExercise(id: Long): Int
 
