@@ -69,6 +69,7 @@ class BackupTest {
         assertEquals("卧推", dest.exerciseDao().getAll()[0].name)
         val s = dest.workoutDao().getAllSessions()[0]
         assertEquals("推日", s.title); assertEquals(100L, s.startTime); assertEquals(200L, s.endTime)
+        assertEquals("", s.note) // 旧格式备份没有 note 字段 → 导入后为空串
         val sets = dest.workoutDao().getSetsWithExerciseNames(s.id)
         assertEquals(1, sets.size)
         assertEquals("卧推", sets[0].exerciseName)
@@ -172,6 +173,19 @@ class BackupTest {
         assertEquals(1, sets.size)
         assertEquals(60.0, sets[0].weightKg, 0.001)
         dest.close()
+    }
+
+    @Test
+    fun importPreservesSessionNote() = runBlocking {
+        val json = """
+            {"schemaVersion":1,"exportedAt":1,
+             "weights":[],
+             "exercises":[],
+             "sessions":[{"title":"推日","startTime":100,"endTime":200,"note":"状态不错"}],
+             "sets":[]}
+        """.trimIndent()
+        BackupRepository(db).import(json)
+        assertEquals("状态不错", db.workoutDao().getAllSessions()[0].note)
     }
 
     @Test

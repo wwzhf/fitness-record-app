@@ -17,6 +17,9 @@ interface WorkoutDao {
     @Query("UPDATE workout_sessions SET title = :title WHERE id = :id")
     suspend fun setSessionTitle(id: Long, title: String)
 
+    @Query("UPDATE workout_sessions SET note = :note WHERE id = :id")
+    suspend fun setNote(id: Long, note: String)
+
     @Query("DELETE FROM workout_sessions WHERE id = :id")
     suspend fun deleteSession(id: Long)
 

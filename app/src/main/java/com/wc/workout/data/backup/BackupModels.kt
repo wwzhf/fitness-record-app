@@ -18,8 +18,14 @@ data class WeightBackup(val dateEpochDay: Long, val weightKg: Double, val record
 @Serializable
 data class ExerciseBackup(val name: String, val createdAt: Long, val isArchived: Boolean)
 
+/** note 可空带默认值：旧备份文件没有该字段也能反序列化 */
 @Serializable
-data class SessionBackup(val title: String, val startTime: Long, val endTime: Long?)
+data class SessionBackup(
+    val title: String,
+    val startTime: Long,
+    val endTime: Long?,
+    val note: String? = null
+)
 
 @Serializable
 data class SetBackup(

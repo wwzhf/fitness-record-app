@@ -145,6 +145,17 @@ class DaoTest {
     }
 
     @Test
+    fun sessionNoteDefaultsEmptyAndSetNoteUpdates() = runBlocking {
+        val dao = db.workoutDao()
+        val id = dao.insertSession(WorkoutSession(title = "测试", startTime = 1_000))
+        assertEquals("", dao.getSession(id)!!.note)
+        dao.setNote(id, "状态不错")
+        assertEquals("状态不错", dao.getSession(id)!!.note)
+        dao.setNote(id, "")
+        assertEquals("", dao.getSession(id)!!.note)
+    }
+
+    @Test
     fun observeActiveByRecentUseOrdersByLastUse() = runBlocking {
         val dao = db.exerciseDao()
         val a = dao.insert(Exercise(name = "A", createdAt = 1))

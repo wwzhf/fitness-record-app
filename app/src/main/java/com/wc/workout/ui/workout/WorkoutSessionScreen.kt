@@ -70,6 +70,7 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
     var showAddSheet by remember { mutableStateOf(false) }
     var showTitleDialog by remember { mutableStateOf(false) }
     var showDurationDialog by remember { mutableStateOf(false) }
+    var showNoteDialog by remember { mutableStateOf(false) }
     var editingSet by remember { mutableStateOf<WorkoutSet?>(null) }
     var removingCard by remember { mutableStateOf<ExerciseCardUi?>(null) }
 
@@ -114,6 +115,16 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
             }
         } else {
             ElapsedTimer(startTime = s.startTime, style = MaterialTheme.typography.headlineMedium)
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { showNoteDialog = true }) {
+            Text(
+                if (s.note.isBlank()) "添加备注" else "备注：${s.note}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (s.note.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = { showNoteDialog = true }) { Icon(Icons.Filled.Edit, contentDescription = "修改备注") }
         }
 
         if (cards.isEmpty()) {
@@ -182,6 +193,14 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
             initial = s.title,
             onSaved = { vm.setSessionTitle(it); showTitleDialog = false },
             onDismiss = { showTitleDialog = false }
+        )
+    }
+
+    if (showNoteDialog) {
+        NoteEditDialog(
+            initial = s.note,
+            onSaved = { vm.setNote(it); showNoteDialog = false },
+            onDismiss = { showNoteDialog = false }
         )
     }
 

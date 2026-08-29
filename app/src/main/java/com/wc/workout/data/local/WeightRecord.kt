@@ -37,7 +37,8 @@ data class WorkoutSession(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val startTime: Long,
-    val endTime: Long? = null
+    val endTime: Long? = null,
+    val note: String = ""
 )
 
 /** 某会话中某动作的一组记录 */

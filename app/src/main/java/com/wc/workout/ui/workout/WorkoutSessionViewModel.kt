@@ -59,6 +59,14 @@ class WorkoutSessionViewModel(
         }
     }
 
+    fun setNote(note: String) {
+        viewModelScope.launch {
+            runCatching { workoutRepo.setSessionNote(sessionId, note.trim()) }
+                .onFailure { Log.w("WorkoutSessionViewModel", "setNote failed", it) }
+            _session.value = runCatching { workoutRepo.getSession(sessionId) }.getOrNull()
+        }
+    }
+
     fun setDurationMinutes(minutes: Int) {
         if (minutes <= 0) return
         viewModelScope.launch {

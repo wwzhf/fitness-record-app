@@ -175,6 +175,9 @@ private fun SessionCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (expanded) {
+                if (session.note.isNotBlank()) {
+                    Text(session.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 if (detail.isNotEmpty()) {
                     val totalVolume = detail.sumOf { it.set.weightKg * it.set.reps }
                     Text(

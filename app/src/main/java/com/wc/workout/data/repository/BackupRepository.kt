@@ -34,7 +34,7 @@ class BackupRepository(private val db: AppDatabase) {
                 WeightBackup(it.dateEpochDay, it.weightKg, it.recordedAt)
             },
             exercises = exercises.map { ExerciseBackup(it.name, it.createdAt, it.isArchived) },
-            sessions = sessions.map { SessionBackup(it.title, it.startTime, it.endTime) },
+            sessions = sessions.map { SessionBackup(it.title, it.startTime, it.endTime, it.note.ifBlank { null }) },
             sets = workoutDao.getAllSets().mapNotNull { s ->
                 val si = sessions.indexOfFirst { it.id == s.sessionId }.takeIf { it >= 0 }
                     ?: return@mapNotNull null
@@ -90,7 +90,10 @@ class BackupRepository(private val db: AppDatabase) {
             workoutDao.deleteSessionsBetween(dayStart, dayEnd)
             for ((si, sb) in entries) {
                 val newId = workoutDao.insertSession(
-                    WorkoutSession(title = sb.title, startTime = sb.startTime, endTime = sb.endTime)
+                    WorkoutSession(
+                        title = sb.title, startTime = sb.startTime, endTime = sb.endTime,
+                        note = sb.note ?: ""
+                    )
                 )
                 sessionIds[si] = newId
                 for (bs in setsBySession[si].orEmpty()) {

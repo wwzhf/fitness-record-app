@@ -85,6 +85,25 @@ fun EditTitleDialog(initial: String, onSaved: (String) -> Unit, onDismiss: () ->
 }
 
 @Composable
+fun NoteEditDialog(initial: String, onSaved: (String) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("备注") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text("体感、睡眠、状态…（留空清除）") },
+                minLines = 3
+            )
+        },
+        confirmButton = { TextButton(onClick = { onSaved(text.trim()) }) { Text("保存") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+    )
+}
+
+@Composable
 fun EditDurationDialog(initialMinutes: Int, onSaved: (Int) -> Unit, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf(initialMinutes.toString()) }
     var error by remember { mutableStateOf(false) }
