@@ -69,6 +69,7 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
     var showAbandonDialog by remember { mutableStateOf(false) }
     var showAddSheet by remember { mutableStateOf(false) }
     var showTitleDialog by remember { mutableStateOf(false) }
+    var showDurationDialog by remember { mutableStateOf(false) }
     var editingSet by remember { mutableStateOf<WorkoutSet?>(null) }
     var removingCard by remember { mutableStateOf<ExerciseCardUi?>(null) }
 
@@ -103,10 +104,14 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
             IconButton(onClick = { showTitleDialog = true }) { Icon(Icons.Filled.Edit, contentDescription = "修改标题") }
         }
         if (ended) {
-            Text(
-                "时长 " + formatDuration((s.endTime!! - s.startTime) / 1000),
-                style = MaterialTheme.typography.headlineMedium
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "时长 " + formatDuration((s.endTime!! - s.startTime) / 1000),
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { showDurationDialog = true }) { Icon(Icons.Filled.Edit, contentDescription = "修改时长") }
+            }
         } else {
             ElapsedTimer(startTime = s.startTime, style = MaterialTheme.typography.headlineMedium)
         }
@@ -177,6 +182,14 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
             initial = s.title,
             onSaved = { vm.setSessionTitle(it); showTitleDialog = false },
             onDismiss = { showTitleDialog = false }
+        )
+    }
+
+    if (showDurationDialog && ended) {
+        EditDurationDialog(
+            initialMinutes = (((s.endTime!! - s.startTime) / 1000).toInt() + 59) / 60,   // 向上取整到分钟，至少 1
+            onSaved = { vm.setDurationMinutes(it); showDurationDialog = false },
+            onDismiss = { showDurationDialog = false }
         )
     }
 

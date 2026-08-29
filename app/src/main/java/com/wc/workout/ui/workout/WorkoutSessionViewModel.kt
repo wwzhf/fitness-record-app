@@ -64,6 +64,17 @@ class WorkoutSessionViewModel(
         }
     }
 
+    fun setDurationMinutes(minutes: Int) {
+        if (minutes <= 0) return
+        viewModelScope.launch {
+            runCatching {
+                val s = workoutRepo.getSession(sessionId) ?: return@launch
+                workoutRepo.endSession(sessionId, s.startTime + minutes * 60_000L)
+            }.onFailure { Log.w("WorkoutSessionViewModel", "setDurationMinutes failed", it) }
+            _session.value = runCatching { workoutRepo.getSession(sessionId) }.getOrNull()
+        }
+    }
+
     /** 返回 false 表示该动作已有卡片（用于提示/滚动定位） */
     suspend fun addPendingExercise(exerciseId: Long): Boolean {
         if (groups.value.any { it.set.exerciseId == exerciseId }) return false

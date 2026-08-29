@@ -1,6 +1,7 @@
 package com.wc.workout.ui.workout
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -78,6 +79,41 @@ fun EditTitleDialog(initial: String, onSaved: (String) -> Unit, onDismiss: () ->
         },
         confirmButton = {
             TextButton(enabled = text.isNotBlank(), onClick = { onSaved(text.trim()) }) { Text("保存") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+    )
+}
+
+@Composable
+fun EditDurationDialog(initialMinutes: Int, onSaved: (Int) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(initialMinutes.toString()) }
+    var error by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("修改时长") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it; error = false },
+                    label = { Text("时长（分钟）") },
+                    isError = error,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                if (error) {
+                    Text(
+                        "请输入大于 0 的整数",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = (text.toIntOrNull()?.takeIf { it > 0 } != null), onClick = {
+                onSaved(text.toInt())
+            }) { Text("保存") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
     )
