@@ -66,6 +66,22 @@ class CalendarViewModel(
         }
     }
 
+    suspend fun recentTitles(): List<String> = workoutRepo.recentTitles()
+
+    fun addPastWorkout(
+        date: LocalDate,
+        title: String,
+        startMillis: Long,
+        endMillis: Long,
+        onCreated: (Long) -> Unit,
+    ) {
+        viewModelScope.launch {
+            runCatching { workoutRepo.addPastSession(title.trim(), startMillis, endMillis) }
+                .onSuccess { onCreated(it) }
+                .onFailure { Log.w("CalendarViewModel", "addPastWorkout failed", it) }
+        }
+    }
+
     suspend fun sessionDetail(sessionId: Long): List<SetWithExercise> =
         workoutRepo.getSetsWithExerciseNames(sessionId)
 

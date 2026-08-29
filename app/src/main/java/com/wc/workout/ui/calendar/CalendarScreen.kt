@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,8 +57,11 @@ import com.wc.workout.ui.common.kgLabel
 import com.wc.workout.ui.common.viewModelWith
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -224,6 +228,8 @@ private fun DayDetailSheet(
         value = vm.sessionsFor(date)
     }
     var showWeightDialog by remember { mutableStateOf(false) }
+    var showAddPastDialog by remember { mutableStateOf(false) }
+    val canAdd = !date.isAfter(LocalDate.now())
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -247,6 +253,9 @@ private fun DayDetailSheet(
 
             // —— 健身记录 ——
             Text("健身记录", style = MaterialTheme.typography.titleMedium)
+            if (canAdd) {
+                TextButton(onClick = { showAddPastDialog = true }) { Text("+ 添加健身记录") }
+            }
             if (daySessions.isEmpty()) {
                 Text(
                     "这一天没有健身记录",
@@ -272,6 +281,19 @@ private fun DayDetailSheet(
             initialKg = dayWeight?.weightKg,
             onSaved = { vm.saveWeight(date, it); refresh++ },
             onDismiss = { showWeightDialog = false }
+        )
+    }
+
+    if (showAddPastDialog) {
+        AddPastWorkoutDialog(
+            date = date,
+            vm = vm,
+            onCreated = { id ->
+                showAddPastDialog = false
+                onDismiss()
+                onOpenSession(id)
+            },
+            onDismiss = { showAddPastDialog = false }
         )
     }
 }
@@ -340,4 +362,103 @@ private fun SessionCard(
             dismissButton = { TextButton(onClick = { showDelete = false }) { Text("取消") } }
         )
     }
+}
+
+@Composable
+private fun AddPastWorkoutDialog(
+    date: LocalDate,
+    vm: CalendarViewModel,
+    onCreated: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var startText by remember {
+        mutableStateOf(LocalTime.now().truncatedTo(ChronoUnit.MINUTES)
+            .format(DateTimeFormatter.ofPattern("HH:mm")))
+    }
+    var endText by remember {
+        mutableStateOf(LocalTime.now().plusMinutes(60).truncatedTo(ChronoUnit.MINUTES)
+            .format(DateTimeFormatter.ofPattern("HH:mm")))
+    }
+    var error by remember { mutableStateOf<String?>(null) }
+    var titles by remember { mutableStateOf<List<String>>(emptyList()) }
+    LaunchedEffect(Unit) { titles = vm.recentTitles() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${date.monthValue}月${date.dayOfMonth}日 补记健身") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it; error = null },
+                    label = { Text("标题（留空自动用日期）") },
+                    singleLine = true
+                )
+                if (titles.isNotEmpty()) {
+                    Text(
+                        "最近使用",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    titles.take(3).forEach { t ->
+                        TextButton(onClick = { title = t }) { Text(t) }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = startText,
+                        onValueChange = { startText = it; error = null },
+                        label = { Text("开始 HH:mm") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = endText,
+                        onValueChange = { endText = it; error = null },
+                        label = { Text("结束 HH:mm") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                error?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val parsed = parseHm(startText)
+                val parsedEnd = parseHm(endText)
+                when {
+                    parsed == null -> error = "开始时间格式应为 HH:mm"
+                    parsedEnd == null -> error = "结束时间格式应为 HH:mm"
+                    else -> {
+                        val startMillis = date.atTime(parsed.first, parsed.second)
+                            .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        val endMillis = date.atTime(parsedEnd.first, parsedEnd.second)
+                            .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        if (endMillis <= startMillis) {
+                            error = "结束时间需晚于开始时间"
+                        } else {
+                            val finalTitle = title.ifBlank {
+                                date.format(DateTimeFormatter.ISO_LOCAL_DATE) + " 训练"
+                            }
+                            vm.addPastWorkout(date, finalTitle, startMillis, endMillis, onCreated)
+                        }
+                    }
+                }
+            }) { Text("创建") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+    )
+}
+
+private fun parseHm(text: String): Pair<Int, Int>? {
+    val parts = text.trim().split(":")
+    if (parts.size != 2) return null
+    val h = parts[0].toIntOrNull() ?: return null
+    val m = parts[1].toIntOrNull() ?: return null
+    if (h !in 0..23 || m !in 0..59) return null
+    return h to m
 }

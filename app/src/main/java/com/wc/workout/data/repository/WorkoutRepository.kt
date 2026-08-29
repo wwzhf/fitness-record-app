@@ -33,6 +33,10 @@ class WorkoutRepository(private val db: AppDatabase) {
     suspend fun recentTitles(limit: Int = 10): List<String> =
         dao.getRecentSessions(50).map { it.title }.distinct().take(limit)
 
+    /** 补记：直接插入一条带完整起止时间的往期会话 */
+    suspend fun addPastSession(title: String, startTime: Long, endTime: Long): Long =
+        dao.insertSession(WorkoutSession(title = title, startTime = startTime, endTime = endTime))
+
     suspend fun addSet(sessionId: Long, exerciseId: Long, weightKg: Double, reps: Int): Long = db.withTransaction {
         val sameExercise = dao.getSetsOfExercise(sessionId, exerciseId)
         val exerciseOrder = sameExercise.firstOrNull()?.exerciseOrder

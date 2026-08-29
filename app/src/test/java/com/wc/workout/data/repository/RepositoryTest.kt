@@ -134,4 +134,17 @@ class RepositoryTest {
         assertEquals(2, perf.size)
         assertEquals(8, perf[0].reps); assertEquals(10, perf[1].reps)
     }
+
+    @Test
+    fun addPastSessionAppearsOnItsDay() = runBlocking {
+        val day = LocalDate.of(2026, 8, 1)
+        val start = day.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val end = day.atTime(11, 30).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        workoutRepo.addPastSession("补记腿日", start, end)
+        val dayStart = day.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val sessions = workoutRepo.getSessionsBetween(dayStart, dayStart + 86_400_000L)
+        assertEquals(1, sessions.size)
+        assertEquals("补记腿日", sessions[0].title)
+        assertEquals(5_400_000L, sessions[0].endTime!! - sessions[0].startTime)
+    }
 }
