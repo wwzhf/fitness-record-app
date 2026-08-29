@@ -38,9 +38,11 @@ fun ExerciseHistoryScreen(container: AppContainer, exerciseId: Long) {
     val entries by vm.entries.collectAsState()
 
     val allSets = entries.flatMap { it.sets }
+    val allBodyweight = allSets.isNotEmpty() && allSets.all { it.weightKg == 0.0 }
     val maxWeight = allSets.maxOfOrNull { it.weightKg } ?: 0.0
     val maxVolume = allSets.maxOfOrNull { it.weightKg * it.reps } ?: 0.0
     val bestWeightSet = allSets.firstOrNull { it.weightKg == maxWeight }
+    val maxSetCount = if (allBodyweight) entries.maxOf { it.sets.size } else 0
     val dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     Column(
@@ -48,7 +50,13 @@ fun ExerciseHistoryScreen(container: AppContainer, exerciseId: Long) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(exercise?.name ?: "", style = MaterialTheme.typography.headlineMedium)
-        if (bestWeightSet != null) {
+        if (allBodyweight) {
+            Text(
+                "最多 $maxSetCount 组",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else if (bestWeightSet != null) {
             Text(
                 "最大重量 ${bestWeightSet.weightKg.displayKg()}kg×${bestWeightSet.reps}" +
                     " · 最大单组容量 %,.0f kg".format(maxVolume),
@@ -64,7 +72,7 @@ fun ExerciseHistoryScreen(container: AppContainer, exerciseId: Long) {
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(entries, key = { it.session.id }) { entry ->
-                    HistoryCard(entry, maxWeight, maxVolume, dateFmt)
+                    HistoryCard(entry, maxWeight, maxVolume, allBodyweight, maxSetCount, dateFmt)
                 }
             }
         }
@@ -76,6 +84,8 @@ private fun HistoryCard(
     entry: ExerciseHistoryEntry,
     maxWeight: Double,
     maxVolume: Double,
+    allBodyweight: Boolean,
+    maxSetCount: Int,
     dateFmt: DateTimeFormatter
 ) {
     val session = entry.session
@@ -87,34 +97,43 @@ private fun HistoryCard(
                 Instant.ofEpochMilli(session.startTime).atZone(ZoneId.systemDefault()).toLocalDate().format(dateFmt),
                 style = MaterialTheme.typography.titleMedium
             )
-            Text(
-                "${formatTime(session.startTime)} – $endText · ${formatDuration(durationSec)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "${formatTime(session.startTime)} – $endText · ${formatDuration(durationSec)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (allBodyweight && entry.sets.size == maxSetCount) {
+                    Text(
+                        "组数PR",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
             entry.sets.forEach { set ->
-                SetRow(set, maxWeight, maxVolume)
+                SetRow(set, maxWeight, maxVolume, showPrChips = !allBodyweight)
             }
         }
     }
 }
 
 @Composable
-private fun SetRow(set: WorkoutSet, maxWeight: Double, maxVolume: Double) {
+private fun SetRow(set: WorkoutSet, maxWeight: Double, maxVolume: Double, showPrChips: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             "${set.weightKg.displayKg()}kg×${set.reps}",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f, fill = false)
         )
-        if (set.weightKg == maxWeight) {
+        if (showPrChips && set.weightKg == maxWeight) {
             Text(
                 "重量PR",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        if (set.weightKg * set.reps == maxVolume) {
+        if (showPrChips && set.weightKg * set.reps == maxVolume) {
             Text(
                 "容量PR",
                 style = MaterialTheme.typography.labelMedium,
