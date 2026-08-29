@@ -114,6 +114,7 @@ docs/superpowers/
 | v1.1.0 | 编辑已结束训练时可修改时长 |
 | v1.2.0 | 训练容量统计、动作历史与 PR、最近使用排序、会话备注；R8 压缩（APK -92%）、schema 导出与迁移测试、响应式数据重构 |
 | v1.2.1 | 纯自重动作按「组数PR」计算 |
+| v1.2.2 | 纯自重动作 PR 修正为按「次数PR」计算 |
 
 各版本的 APK 与发布说明见 [Releases](https://github.com/wwzhf/fitness-record-app/releases)。
 
