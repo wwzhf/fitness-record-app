@@ -46,13 +46,15 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun TrendScreen(container: AppContainer) {
-    val vm: TrendViewModel = viewModelWith { TrendViewModel(container.weightRepository) }
+    val vm: TrendViewModel = viewModelWith { TrendViewModel(container.weightRepository, container.workoutRepository) }
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
 
     val all by vm.weights.collectAsState()
+    val volumes by vm.volumes.collectAsState()
     val range by vm.range.collectAsState()
+    val metric by vm.metric.collectAsState()
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -84,40 +86,83 @@ fun TrendScreen(container: AppContainer) {
                     FilterChip(selected = range == r, onClick = { vm.range.value = r }, label = { Text(r.label) })
                 }
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TrendMetric.entries.forEach { m ->
+                    FilterChip(selected = metric == m, onClick = { vm.metric.value = m }, label = { Text(m.label) })
+                }
+            }
 
             val today = LocalDate.now().toEpochDay()
-            val shown = remember(all, range, today) {
+            val shownWeights = remember(all, range, today) {
                 when (val r = range) {
                     TrendRange.ALL -> all
                     else -> all.filter { it.dateEpochDay >= today - (r.days ?: 0) + 1 }
                 }
             }
+            val shownVolumes = remember(volumes, range) {
+                when (val r = range) {
+                    TrendRange.ALL -> volumes
+                    else -> {
+                        val rangeStartMillis = LocalDate.now()
+                            .minusDays((r.days ?: 0) - 1L)
+                            .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        volumes.filter { it.startTime >= rangeStartMillis }
+                    }
+                }
+            }
+            val recordCount = if (metric == TrendMetric.WEIGHT) shownWeights.size else shownVolumes.size
             Text(
-                "该范围共 ${shown.size} 条记录",
+                "该范围共 $recordCount 条记录",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (shown.isEmpty()) {
-                Box(
-                    Modifier.fillMaxWidth().height(220.dp),
-                    contentAlignment = Alignment.Center
-                ) { Text("这个范围内还没有体重记录", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            } else {
-                val values = shown.map { it.weightKg }
-                val zone = ZoneId.systemDefault()
-                val fmt = DateTimeFormatter.ofPattern("MM-dd")
-                WeightLineChart(
-                    points = shown.map { it.dateEpochDay to it.weightKg },
-                    modifier = Modifier.fillMaxWidth().height(220.dp)
-                )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(Instant.ofEpochMilli(shown.first().dateEpochDay * 86_400_000).atZone(zone).toLocalDate().format(fmt))
-                    Text(Instant.ofEpochMilli(shown.last().dateEpochDay * 86_400_000).atZone(zone).toLocalDate().format(fmt))
+            if (metric == TrendMetric.WEIGHT) {
+                if (shownWeights.isEmpty()) {
+                    Box(
+                        Modifier.fillMaxWidth().height(220.dp),
+                        contentAlignment = Alignment.Center
+                    ) { Text("这个范围内还没有体重记录", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                } else {
+                    val values = shownWeights.map { it.weightKg }
+                    val zone = ZoneId.systemDefault()
+                    val fmt = DateTimeFormatter.ofPattern("MM-dd")
+                    WeightLineChart(
+                        points = shownWeights.map { it.dateEpochDay to it.weightKg },
+                        modifier = Modifier.fillMaxWidth().height(220.dp)
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(Instant.ofEpochMilli(shownWeights.first().dateEpochDay * 86_400_000).atZone(zone).toLocalDate().format(fmt))
+                        Text(Instant.ofEpochMilli(shownWeights.last().dateEpochDay * 86_400_000).atZone(zone).toLocalDate().format(fmt))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("最高 ${values.max().kgLabel()}")
+                        Text("最低 ${values.min().kgLabel()}")
+                        Text("平均 ${values.average().kgLabel()}")
+                    }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("最高 ${values.max().kgLabel()}")
-                    Text("最低 ${values.min().kgLabel()}")
-                    Text("平均 ${values.average().kgLabel()}")
+            } else {
+                if (shownVolumes.isEmpty()) {
+                    Box(
+                        Modifier.fillMaxWidth().height(220.dp),
+                        contentAlignment = Alignment.Center
+                    ) { Text("这个范围内还没有训练记录", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                } else {
+                    val vols = shownVolumes.map { it.volume }
+                    val fmt = DateTimeFormatter.ofPattern("MM-dd")
+                    WeightLineChart(
+                        points = shownVolumes.map { it.startTime to it.volume },
+                        xIsMillis = true,
+                        modifier = Modifier.fillMaxWidth().height(220.dp)
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(Instant.ofEpochMilli(shownVolumes.first().startTime).atZone(ZoneId.systemDefault()).toLocalDate().format(fmt))
+                        Text(Instant.ofEpochMilli(shownVolumes.last().startTime).atZone(ZoneId.systemDefault()).toLocalDate().format(fmt))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("最高 %,.0f kg".format(vols.max()))
+                        Text("最低 %,.0f kg".format(vols.min()))
+                        Text("平均 %,.0f kg".format(vols.average()))
+                    }
                 }
             }
 

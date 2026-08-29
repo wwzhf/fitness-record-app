@@ -89,4 +89,18 @@ interface WorkoutDao {
            ORDER BY ws.exerciseOrder, ws.setOrder"""
     )
     fun observeSetsWithExerciseNames(sessionId: Long): Flow<List<SetWithExercise>>
+
+    @Query(
+        """SELECT s.startTime AS startTime, SUM(ws.weightKg * ws.reps) AS volume
+           FROM workout_sessions s INNER JOIN workout_sets ws ON ws.sessionId = s.id
+           GROUP BY s.id ORDER BY s.startTime"""
+    )
+    fun observeSessionVolumes(): Flow<List<SessionVolume>>
+
+    @Query(
+        """SELECT s.* FROM workout_sessions s
+           WHERE EXISTS(SELECT 1 FROM workout_sets ws WHERE ws.sessionId = s.id AND ws.exerciseId = :exerciseId)
+           ORDER BY s.startTime DESC"""
+    )
+    suspend fun getSessionsForExercise(exerciseId: Long): List<WorkoutSession>
 }

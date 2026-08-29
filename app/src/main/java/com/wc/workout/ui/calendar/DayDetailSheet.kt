@@ -175,6 +175,14 @@ private fun SessionCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (expanded) {
+                if (detail.isNotEmpty()) {
+                    val totalVolume = detail.sumOf { it.set.weightKg * it.set.reps }
+                    Text(
+                        "总容量 %,d kg".format(totalVolume.toLong()),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 detail.groupBy { it.set.exerciseOrder }.toSortedMap().forEach { (_, rows) ->
                     Text(
                         "${rows.first().exerciseName}：" +

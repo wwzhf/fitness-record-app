@@ -2,10 +2,14 @@ package com.wc.workout.data.repository
 
 import androidx.room.withTransaction
 import com.wc.workout.data.local.AppDatabase
+import com.wc.workout.data.local.SessionVolume
 import com.wc.workout.data.local.SetWithExercise
 import com.wc.workout.data.local.WorkoutSession
 import com.wc.workout.data.local.WorkoutSet
 import kotlinx.coroutines.flow.Flow
+
+/** 某动作的一次历史训练及其该动作的全部组记录 */
+data class ExerciseHistoryEntry(val session: WorkoutSession, val sets: List<WorkoutSet>)
 
 class WorkoutRepository(private val db: AppDatabase) {
     private val dao = db.workoutDao()
@@ -60,6 +64,8 @@ class WorkoutRepository(private val db: AppDatabase) {
     fun observeSetsWithExerciseNames(sessionId: Long): Flow<List<SetWithExercise>> =
         dao.observeSetsWithExerciseNames(sessionId)
 
+    fun observeSessionVolumes(): Flow<List<SessionVolume>> = dao.observeSessionVolumes()
+
     suspend fun lastPerformance(exerciseId: Long, currentSessionId: Long): List<WorkoutSet> {
         val sessionId = dao.findLastSessionIdWithExercise(exerciseId, currentSessionId) ?: return emptyList()
         return dao.getSetsOfExercise(sessionId, exerciseId)
@@ -67,5 +73,10 @@ class WorkoutRepository(private val db: AppDatabase) {
 
     suspend fun removeExerciseFromSession(sessionId: Long, exerciseId: Long) = db.withTransaction {
         dao.getSetsOfExercise(sessionId, exerciseId).forEach { dao.deleteSet(it.id) }
+    }
+
+    suspend fun getExerciseHistory(exerciseId: Long): List<ExerciseHistoryEntry> {
+        val sessions = dao.getSessionsForExercise(exerciseId)
+        return sessions.map { s -> ExerciseHistoryEntry(s, dao.getSetsOfExercise(s.id, exerciseId)) }
     }
 }

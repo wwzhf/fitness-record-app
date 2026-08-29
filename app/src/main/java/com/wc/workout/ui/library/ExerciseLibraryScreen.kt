@@ -44,7 +44,7 @@ import com.wc.workout.ui.common.viewModelWith
 import kotlinx.coroutines.launch
 
 @Composable
-fun ExerciseLibraryScreen(container: AppContainer) {
+fun ExerciseLibraryScreen(container: AppContainer, onOpenExercise: (Long) -> Unit) {
     val vm: ExerciseLibraryViewModel = viewModelWith { ExerciseLibraryViewModel(container.exerciseRepository) }
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
@@ -91,7 +91,7 @@ fun ExerciseLibraryScreen(container: AppContainer) {
                                 Icon(Icons.Filled.MoreVert, contentDescription = "更多")
                             }
                         },
-                        modifier = Modifier.clickable { renameTarget = ex }
+                        modifier = Modifier.clickable { onOpenExercise(ex.id) }
                     )
                 }
                 if (archived.isNotEmpty()) {

@@ -23,6 +23,7 @@ import androidx.navigation.navArgument
 import com.wc.workout.AppContainer
 import com.wc.workout.ui.calendar.CalendarScreen
 import com.wc.workout.ui.home.HomeScreen
+import com.wc.workout.ui.library.ExerciseHistoryScreen
 import com.wc.workout.ui.library.ExerciseLibraryScreen
 import com.wc.workout.ui.trend.TrendScreen
 import com.wc.workout.ui.workout.WorkoutSessionScreen
@@ -73,7 +74,9 @@ fun WorkoutRoot(container: AppContainer) {
                 HomeScreen(container, onStartWorkout = { id -> navController.navigate("workout/$id") })
             }
             composable("calendar") { CalendarScreen(container, onOpenSession = { navController.navigate("workout/$it") }) }
-            composable("library") { ExerciseLibraryScreen(container) }
+            composable("library") {
+                ExerciseLibraryScreen(container, onOpenExercise = { navController.navigate("exercise/$it") })
+            }
             composable("trend") { TrendScreen(container) }
             composable(
                 route = "workout/{sessionId}",
@@ -81,6 +84,13 @@ fun WorkoutRoot(container: AppContainer) {
             ) { entry ->
                 val sessionId = entry.arguments?.getLong("sessionId") ?: 0L
                 WorkoutSessionScreen(container, sessionId, onFinished = { navController.popBackStack() })
+            }
+            composable(
+                route = "exercise/{exerciseId}",
+                arguments = listOf(navArgument("exerciseId") { type = NavType.LongType })
+            ) { entry ->
+                val exerciseId = entry.arguments?.getLong("exerciseId") ?: 0L
+                ExerciseHistoryScreen(container, exerciseId)
             }
         }
     }

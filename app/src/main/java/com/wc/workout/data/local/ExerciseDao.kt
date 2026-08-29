@@ -10,6 +10,17 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises WHERE isArchived = 0 ORDER BY name")
     fun observeActive(): Flow<List<Exercise>>
 
+    /** 未归档动作按最近使用排序（从未用过排最后，再按名称）；IFNULL 兼容旧版 SQLite */
+    @Query(
+        """SELECT e.* FROM exercises e
+           LEFT JOIN workout_sets ws ON ws.exerciseId = e.id
+           LEFT JOIN workout_sessions s ON s.id = ws.sessionId
+           WHERE e.isArchived = 0
+           GROUP BY e.id
+           ORDER BY IFNULL(MAX(s.startTime), 0) DESC, e.name"""
+    )
+    fun observeActiveByRecentUse(): Flow<List<Exercise>>
+
     @Query("SELECT * FROM exercises WHERE isArchived = 1 ORDER BY name")
     fun observeArchived(): Flow<List<Exercise>>
 

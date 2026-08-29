@@ -136,6 +136,21 @@ class RepositoryTest {
     }
 
     @Test
+    fun getSessionsForExerciseFiltersAndSortsDesc() = runBlocking {
+        val e = exerciseRepo.addExercise("卧推") as ExerciseNameResult.Success
+        val s1 = workoutRepo.startSession("一", now = 1_000)
+        workoutRepo.startSession("二", now = 2_000)
+        val s3 = workoutRepo.startSession("三", now = 3_000)
+        workoutRepo.addSet(s1, e.id, 60.0, 8)
+        workoutRepo.addSet(s3, e.id, 70.0, 8)
+
+        val history = workoutRepo.getExerciseHistory(e.id)
+        assertEquals(listOf(s3, s1), history.map { it.session.id })
+        assertEquals(1, history[0].sets.size)
+        assertEquals(70.0, history[0].sets[0].weightKg, 0.001)
+    }
+
+    @Test
     fun addPastSessionAppearsOnItsDay() = runBlocking {
         val day = LocalDate.of(2026, 8, 1)
         val start = day.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()

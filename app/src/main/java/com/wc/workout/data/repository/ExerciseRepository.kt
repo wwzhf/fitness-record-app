@@ -14,6 +14,7 @@ class ExerciseRepository(private val db: AppDatabase) {
     private val dao = db.exerciseDao()
 
     fun observeActive(): Flow<List<Exercise>> = dao.observeActive()
+    fun observeActiveByRecentUse(): Flow<List<Exercise>> = dao.observeActiveByRecentUse()
     fun observeArchived(): Flow<List<Exercise>> = dao.observeArchived()
 
     suspend fun addExercise(name: String): ExerciseNameResult {

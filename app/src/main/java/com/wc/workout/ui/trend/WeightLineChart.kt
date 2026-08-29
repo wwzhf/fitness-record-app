@@ -17,7 +17,11 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun WeightLineChart(points: List<Pair<Long, Double>>, modifier: Modifier = Modifier) {
+fun WeightLineChart(
+    points: List<Pair<Long, Double>>,
+    modifier: Modifier = Modifier,
+    xIsMillis: Boolean = false
+) {
     val lineColor = MaterialTheme.colorScheme.primary
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     Canvas(modifier) {
@@ -88,8 +92,11 @@ fun WeightLineChart(points: List<Pair<Long, Double>>, modifier: Modifier = Modif
         val minDay = points.first().first
         val maxDay = points.last().first
         val spanDays = maxDay - minDay
-        val tickCount = minOf(4, spanDays.toInt() + 1).coerceAtLeast(2)
-        val dateFmt = DateTimeFormatter.ofPattern(if (spanDays <= 400) "MM-dd" else "yyyy-MM")
+        // xIsMillis 时跨度按毫秒计，刻度数量按天折算
+        val spanForTicks = if (xIsMillis) spanDays / 86_400_000L else spanDays
+        val tickCount = minOf(4, spanForTicks.toInt() + 1).coerceAtLeast(2)
+        val spanLimit = if (xIsMillis) 400L * 86_400_000L else 400L
+        val dateFmt = DateTimeFormatter.ofPattern(if (spanDays <= spanLimit) "MM-dd" else "yyyy-MM")
         val zone = ZoneId.systemDefault()
         val tickLen = 6.dp.toPx()
         val tickDays = (0 until tickCount).map { i ->
@@ -104,7 +111,11 @@ fun WeightLineChart(points: List<Pair<Long, Double>>, modifier: Modifier = Modif
                 end = Offset(x, size.height - tickLen),
                 strokeWidth = 1.dp.toPx()
             )
-            val label = Instant.ofEpochMilli(day * 86_400_000).atZone(zone).toLocalDate().format(dateFmt)
+            val label = if (xIsMillis) {
+                Instant.ofEpochMilli(day).atZone(zone).toLocalDate().format(dateFmt)
+            } else {
+                Instant.ofEpochMilli(day * 86_400_000).atZone(zone).toLocalDate().format(dateFmt)
+            }
             val w = tickPaint.measureText(label)
             val tx = when (idx) {
                 0 -> x

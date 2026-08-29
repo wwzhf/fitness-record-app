@@ -145,6 +145,36 @@ class DaoTest {
     }
 
     @Test
+    fun observeActiveByRecentUseOrdersByLastUse() = runBlocking {
+        val dao = db.exerciseDao()
+        val a = dao.insert(Exercise(name = "A", createdAt = 1))
+        val b = dao.insert(Exercise(name = "B", createdAt = 2))
+        dao.insert(Exercise(name = "C", createdAt = 3))
+        val workoutDao = db.workoutDao()
+        val s1 = workoutDao.insertSession(WorkoutSession(title = "一", startTime = 1_000))
+        val s2 = workoutDao.insertSession(WorkoutSession(title = "二", startTime = 2_000))
+        workoutDao.insertSet(WorkoutSet(sessionId = s1, exerciseId = a, weightKg = 60.0, reps = 8, exerciseOrder = 1, setOrder = 1))
+        workoutDao.insertSet(WorkoutSet(sessionId = s2, exerciseId = b, weightKg = 60.0, reps = 8, exerciseOrder = 1, setOrder = 1))
+
+        assertEquals(listOf("B", "A", "C"), dao.observeActiveByRecentUse().first().map { it.name })
+    }
+
+    @Test
+    fun observeSessionVolumesSumsPerSession() = runBlocking {
+        val workoutDao = db.workoutDao()
+        val e = db.exerciseDao().insert(Exercise(name = "卧推", createdAt = 1))
+        val s1 = workoutDao.insertSession(WorkoutSession(title = "一", startTime = 1_000))
+        val s2 = workoutDao.insertSession(WorkoutSession(title = "二", startTime = 2_000))
+        workoutDao.insertSet(WorkoutSet(sessionId = s1, exerciseId = e, weightKg = 60.0, reps = 10, exerciseOrder = 1, setOrder = 1))
+        workoutDao.insertSet(WorkoutSet(sessionId = s1, exerciseId = e, weightKg = 70.0, reps = 5, exerciseOrder = 1, setOrder = 2))
+        workoutDao.insertSet(WorkoutSet(sessionId = s2, exerciseId = e, weightKg = 20.0, reps = 8, exerciseOrder = 1, setOrder = 1))
+
+        val volumes = workoutDao.observeSessionVolumes().first()
+        assertEquals(listOf(1_000L, 2_000L), volumes.map { it.startTime })
+        assertEquals(listOf(950.0, 160.0), volumes.map { it.volume })
+    }
+
+    @Test
     fun deleteByDateRemovesWeightRow() = runBlocking {
         val dao = db.weightDao()
         dao.insert(WeightRecord(dateEpochDay = 200, weightKg = 70.0, recordedAt = 1_000))

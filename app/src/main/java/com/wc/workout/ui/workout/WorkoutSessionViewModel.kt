@@ -37,7 +37,7 @@ class WorkoutSessionViewModel(
         workoutRepo.observeSetsWithExerciseNames(sessionId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val exercises: StateFlow<List<Exercise>> = exerciseRepo.observeActive()
+    val exercises: StateFlow<List<Exercise>> = exerciseRepo.observeActiveByRecentUse()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val exerciseQuery = MutableStateFlow("")
