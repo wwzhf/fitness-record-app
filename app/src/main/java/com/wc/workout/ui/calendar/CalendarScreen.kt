@@ -220,9 +220,21 @@ private fun DayCell(
     onDayClick: (LocalDate) -> Unit
 ) {
     val isToday = date == LocalDate.now()
+    val hasWorkout = daySessions.isNotEmpty()
+    val cellShape = RoundedCornerShape(8.dp)
     Column(
         modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(cellShape)
+            .then(
+                if (hasWorkout) {
+                    Modifier.background(
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
+                        cellShape
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .clickable { onDayClick(date) }
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
