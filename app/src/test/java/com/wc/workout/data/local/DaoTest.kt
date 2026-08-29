@@ -143,4 +143,14 @@ class DaoTest {
         dao.setSessionTitle(s, "新标题")
         assertEquals("新标题", dao.getSession(s)!!.title)
     }
+
+    @Test
+    fun deleteByDateRemovesWeightRow() = runBlocking {
+        val dao = db.weightDao()
+        dao.insert(WeightRecord(dateEpochDay = 200, weightKg = 70.0, recordedAt = 1_000))
+        dao.insert(WeightRecord(dateEpochDay = 201, weightKg = 71.0, recordedAt = 2_000))
+        dao.deleteByDate(200)
+        assertNull(dao.getByDate(200))
+        assertEquals(71.0, dao.getByDate(201)!!.weightKg, 0.001)
+    }
 }

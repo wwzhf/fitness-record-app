@@ -287,6 +287,7 @@ private fun DayDetailSheet(
         value = vm.sessionsFor(date)
     }
     var showWeightDialog by remember { mutableStateOf(false) }
+    var showDeleteWeightDialog by remember { mutableStateOf(false) }
     var showAddPastDialog by remember { mutableStateOf(false) }
     val canAdd = !date.isAfter(LocalDate.now())
 
@@ -307,6 +308,9 @@ private fun DayDetailSheet(
                         modifier = Modifier.weight(1f)
                     )
                     TextButton(onClick = { showWeightDialog = true }) { Text("修改") }
+                    TextButton(onClick = { showDeleteWeightDialog = true }) {
+                        Text("删除", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
 
@@ -340,6 +344,22 @@ private fun DayDetailSheet(
             initialKg = dayWeight?.weightKg,
             onSaved = { vm.saveWeight(date, it); refresh++ },
             onDismiss = { showWeightDialog = false }
+        )
+    }
+
+    if (showDeleteWeightDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteWeightDialog = false },
+            title = { Text("删除体重") },
+            text = { Text("删除 ${date.monthValue}月${date.dayOfMonth}日 的体重记录？此操作不可恢复。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteWeight(date)
+                    showDeleteWeightDialog = false
+                    refresh++
+                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteWeightDialog = false }) { Text("取消") } }
         )
     }
 

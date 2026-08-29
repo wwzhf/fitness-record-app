@@ -32,4 +32,6 @@ class WeightRepository(private val db: AppDatabase) {
             upsertWeightByDate(dao, WeightRecord(dateEpochDay = date.toEpochDay(), weightKg = weightKg, recordedAt = recordedAt))
         }
     }
+
+    suspend fun deleteWeight(date: LocalDate) = dao.deleteByDate(date.toEpochDay())
 }

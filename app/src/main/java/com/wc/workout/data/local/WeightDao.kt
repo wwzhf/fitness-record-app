@@ -25,4 +25,7 @@ interface WeightDao {
 
     @Update
     suspend fun update(record: WeightRecord)
+
+    @Query("DELETE FROM weight_records WHERE dateEpochDay = :dateEpochDay")
+    suspend fun deleteByDate(dateEpochDay: Long)
 }

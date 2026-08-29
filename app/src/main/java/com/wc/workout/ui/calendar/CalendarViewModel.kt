@@ -70,6 +70,13 @@ class CalendarViewModel(
         }
     }
 
+    fun deleteWeight(date: LocalDate) {
+        viewModelScope.launch {
+            runCatching { weightRepo.deleteWeight(date) }
+                .onFailure { Log.w("CalendarViewModel", "deleteWeight failed", it) }
+        }
+    }
+
     suspend fun recentTitles(): List<String> = workoutRepo.recentTitles()
 
     fun addPastWorkout(
