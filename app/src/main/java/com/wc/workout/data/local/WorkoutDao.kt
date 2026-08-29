@@ -81,4 +81,12 @@ interface WorkoutDao {
            ORDER BY ws.exerciseOrder, ws.setOrder"""
     )
     suspend fun getSetsWithExerciseNames(sessionId: Long): List<SetWithExercise>
+
+    @Query(
+        """SELECT ws.*, e.name AS exerciseName FROM workout_sets ws
+           INNER JOIN exercises e ON e.id = ws.exerciseId
+           WHERE ws.sessionId = :sessionId
+           ORDER BY ws.exerciseOrder, ws.setOrder"""
+    )
+    fun observeSetsWithExerciseNames(sessionId: Long): Flow<List<SetWithExercise>>
 }

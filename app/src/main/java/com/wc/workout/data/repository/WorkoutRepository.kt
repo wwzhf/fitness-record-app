@@ -57,6 +57,9 @@ class WorkoutRepository(private val db: AppDatabase) {
     suspend fun getSetsWithExerciseNames(sessionId: Long): List<SetWithExercise> =
         dao.getSetsWithExerciseNames(sessionId)
 
+    fun observeSetsWithExerciseNames(sessionId: Long): Flow<List<SetWithExercise>> =
+        dao.observeSetsWithExerciseNames(sessionId)
+
     suspend fun lastPerformance(exerciseId: Long, currentSessionId: Long): List<WorkoutSet> {
         val sessionId = dao.findLastSessionIdWithExercise(exerciseId, currentSessionId) ?: return emptyList()
         return dao.getSetsOfExercise(sessionId, exerciseId)

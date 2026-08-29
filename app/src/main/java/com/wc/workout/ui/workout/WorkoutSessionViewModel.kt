@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -34,11 +33,9 @@ class WorkoutSessionViewModel(
         }
     }
 
-    private val reload = MutableStateFlow(0)
-
-    val groups: StateFlow<List<SetWithExercise>> = reload
-        .map { workoutRepo.getSetsWithExerciseNames(sessionId) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val groups: StateFlow<List<SetWithExercise>> =
+        workoutRepo.observeSetsWithExerciseNames(sessionId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val exercises: StateFlow<List<Exercise>> = exerciseRepo.observeActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -52,8 +49,6 @@ class WorkoutSessionViewModel(
 
     /** 已选但尚无组记录的动作（未持久化，仅本次页面生命周期） */
     val pendingExerciseIds = MutableStateFlow<List<Long>>(emptyList())
-
-    fun refresh() { reload.value++ }
 
     fun setSessionTitle(title: String) {
         if (title.isBlank()) return
@@ -96,26 +91,22 @@ class WorkoutSessionViewModel(
     suspend fun addSet(exerciseId: Long, weightKg: Double, reps: Int) {
         runCatching { workoutRepo.addSet(sessionId, exerciseId, weightKg, reps) }
             .onFailure { Log.w("WorkoutSessionViewModel", "addSet failed", it) }
-        refresh()
     }
 
     suspend fun updateSet(set: WorkoutSet) {
         runCatching { workoutRepo.updateSet(set) }
             .onFailure { Log.w("WorkoutSessionViewModel", "updateSet failed", it) }
-        refresh()
     }
 
     suspend fun deleteSet(id: Long) {
         runCatching { workoutRepo.deleteSet(id) }
             .onFailure { Log.w("WorkoutSessionViewModel", "deleteSet failed", it) }
-        refresh()
     }
 
     suspend fun removeExercise(exerciseId: Long) {
         runCatching { workoutRepo.removeExerciseFromSession(sessionId, exerciseId) }
             .onFailure { Log.w("WorkoutSessionViewModel", "removeExercise failed", it) }
         pendingExerciseIds.value = pendingExerciseIds.value - exerciseId
-        refresh()
     }
 
     suspend fun lastPerformance(exerciseId: Long): List<WorkoutSet> =
