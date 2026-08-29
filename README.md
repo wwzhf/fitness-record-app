@@ -107,6 +107,7 @@ docs/superpowers/
 | v1.0.7 | 导入语义改为覆盖替换 |
 | v1.0.8 | 导入语义最终定为按日期覆盖合并 |
 | v1.0.9 | 修复趋势图日期刻度重叠 |
+| v1.1.0 | 编辑已结束训练时可修改时长 |
 
 各版本的 APK 与发布说明见 [Releases](https://github.com/wwzhf/fitness-record-app/releases)。
 
