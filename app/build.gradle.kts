@@ -47,6 +47,16 @@ android {
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
+    sourceSets {
+        // Robolectric 本地测试按 test_config.properties 的 android_merged_assets 读取
+        // debug 变体的合并 assets，schema 需挂在 debug（test 一并挂上以备设备端测试）
+        getByName("debug") {
+            assets.srcDir("$projectDir/schemas")
+        }
+        getByName("test") {
+            assets.srcDir("$projectDir/schemas")
+        }
+    }
 }
 
 dependencies {
@@ -70,4 +80,5 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.room.testing)
 }
