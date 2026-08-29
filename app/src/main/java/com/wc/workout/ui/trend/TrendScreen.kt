@@ -136,7 +136,7 @@ fun TrendScreen(container: AppContainer) {
         AlertDialog(
             onDismissRequest = { pendingImportUri = null },
             title = { Text("导入备份") },
-            text = { Text("将合并数据：同一天的体重会被备份覆盖，训练记录全部追加，同名动作复用。") },
+            text = { Text("导入将以备份文件为准替换 App 内的全部数据：现有训练、动作、体重会先清空，再写入文件内容。建议先导出备份再导入。") },
             confirmButton = {
                 TextButton(onClick = {
                     pendingImportUri = null

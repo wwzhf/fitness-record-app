@@ -43,20 +43,21 @@ class BackupRepository(private val db: AppDatabase) {
         return json.encodeToString(BackupData.serializer(), data)
     }
 
-    /** 单事务导入，任一步失败整体回滚。合并策略见 spec 第 10 节 */
+    /** 覆盖式导入（清空后写入，单事务），任一步失败整体回滚 */
     suspend fun import(jsonText: String): ImportSummary = db.withTransaction {
         val data = json.decodeFromString(BackupData.serializer(), jsonText)
         check(data.schemaVersion <= SCHEMA_VERSION) { "备份版本过新（${data.schemaVersion}），请先升级 app" }
 
-        val referencedExerciseIdx = data.sets.map { it.exerciseIndex }.toSet()
-        val exerciseIds = data.exercises.mapIndexed { idx, eb ->
-            val existing = exerciseDao.findByName(eb.name)
-            val id = existing?.id
-                ?: exerciseDao.insert(Exercise(name = eb.name, createdAt = eb.createdAt, isArchived = eb.isArchived))
-            if (existing != null && existing.isArchived && idx in referencedExerciseIdx) {
-                exerciseDao.setArchived(id, false)
-            }
-            id
+        // 覆盖式导入：以备份文件为准，先清空现有数据（先子表后父表）
+        workoutDao.deleteAllSets()
+        workoutDao.deleteAllSessions()
+        exerciseDao.deleteAll()
+        weightDao.deleteAll()
+
+        val exerciseIds = data.exercises.map { eb ->
+            exerciseDao.insert(
+                Exercise(name = eb.name, createdAt = eb.createdAt, isArchived = eb.isArchived)
+            )
         }
 
         data.weights.forEach { w ->

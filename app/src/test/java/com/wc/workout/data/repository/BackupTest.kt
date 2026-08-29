@@ -10,7 +10,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -93,16 +92,33 @@ class BackupTest {
     }
 
     @Test
-    fun importUnarchivesReferencedExercise() = runBlocking {
+    fun importPreservesArchivedState() = runBlocking {
+        val archivedJson = """
+            {"schemaVersion":1,"exportedAt":1,
+             "weights":[],
+             "exercises":[{"name":"旧动作","createdAt":1,"isArchived":true}],
+             "sessions":[],
+             "sets":[]}
+        """.trimIndent()
+        BackupRepository(db).import(archivedJson)
+        assertTrue(db.exerciseDao().findByName("旧动作")!!.isArchived)
+    }
+
+    @Test
+    fun importReplacesAllExistingData() = runBlocking {
         val json = seedSource()
         val dest = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(), AppDatabase::class.java
         ).allowMainThreadQueries().build()
-        val id = dest.exerciseDao().insert(
-            Exercise(name = "卧推", createdAt = 1, isArchived = true)
-        )
+        // 目标库里预先存在的、备份里没有的数据
+        dest.exerciseDao().insert(com.wc.workout.data.local.Exercise(name = "旧动作", createdAt = 1))
+        dest.workoutDao().insertSession(com.wc.workout.data.local.WorkoutSession(title = "旧训练", startTime = 5))
+        dest.weightDao().insert(com.wc.workout.data.local.WeightRecord(dateEpochDay = 1, weightKg = 1.0, recordedAt = 1))
         BackupRepository(dest).import(json)
-        assertFalse(dest.exerciseDao().getById(id)!!.isArchived)
+        // 备份之外的数据全部被清掉
+        assertEquals(listOf("卧推"), dest.exerciseDao().getAll().map { it.name })
+        assertEquals(1, dest.workoutDao().getAllSessions().size)
+        assertEquals(1, dest.weightDao().getAll().size)
         dest.close()
     }
 

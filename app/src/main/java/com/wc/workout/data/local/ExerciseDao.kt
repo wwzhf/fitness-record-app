@@ -16,6 +16,9 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises")
     suspend fun getAll(): List<Exercise>
 
+    @Query("DELETE FROM exercises")
+    suspend fun deleteAll()
+
     @Query("SELECT * FROM exercises WHERE name = :name LIMIT 1")
     suspend fun findByName(name: String): Exercise?
 

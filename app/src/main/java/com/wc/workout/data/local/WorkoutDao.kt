@@ -38,6 +38,12 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_sessions")
     suspend fun getAllSessions(): List<WorkoutSession>
 
+    @Query("DELETE FROM workout_sets")
+    suspend fun deleteAllSets()
+
+    @Query("DELETE FROM workout_sessions")
+    suspend fun deleteAllSessions()
+
     @Insert
     suspend fun insertSet(set: WorkoutSet): Long
 
