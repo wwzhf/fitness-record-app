@@ -42,7 +42,7 @@ fun ExerciseHistoryScreen(container: AppContainer, exerciseId: Long) {
     val maxWeight = allSets.maxOfOrNull { it.weightKg } ?: 0.0
     val maxVolume = allSets.maxOfOrNull { it.weightKg * it.reps } ?: 0.0
     val bestWeightSet = allSets.firstOrNull { it.weightKg == maxWeight }
-    val maxSetCount = if (allBodyweight) entries.maxOf { it.sets.size } else 0
+    val maxReps = if (allBodyweight) allSets.maxOf { it.reps } else 0
     val dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     Column(
@@ -52,7 +52,7 @@ fun ExerciseHistoryScreen(container: AppContainer, exerciseId: Long) {
         Text(exercise?.name ?: "", style = MaterialTheme.typography.headlineMedium)
         if (allBodyweight) {
             Text(
-                "最多 $maxSetCount 组",
+                "最多 $maxReps 次",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -72,7 +72,7 @@ fun ExerciseHistoryScreen(container: AppContainer, exerciseId: Long) {
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(entries, key = { it.session.id }) { entry ->
-                    HistoryCard(entry, maxWeight, maxVolume, allBodyweight, maxSetCount, dateFmt)
+                    HistoryCard(entry, maxWeight, maxVolume, allBodyweight, maxReps, dateFmt)
                 }
             }
         }
@@ -85,7 +85,7 @@ private fun HistoryCard(
     maxWeight: Double,
     maxVolume: Double,
     allBodyweight: Boolean,
-    maxSetCount: Int,
+    maxReps: Int,
     dateFmt: DateTimeFormatter
 ) {
     val session = entry.session
@@ -103,23 +103,16 @@ private fun HistoryCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (allBodyweight && entry.sets.size == maxSetCount) {
-                    Text(
-                        "组数PR",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
             }
             entry.sets.forEach { set ->
-                SetRow(set, maxWeight, maxVolume, showPrChips = !allBodyweight)
+                SetRow(set, maxWeight, maxVolume, maxReps, showPrChips = !allBodyweight)
             }
         }
     }
 }
 
 @Composable
-private fun SetRow(set: WorkoutSet, maxWeight: Double, maxVolume: Double, showPrChips: Boolean) {
+private fun SetRow(set: WorkoutSet, maxWeight: Double, maxVolume: Double, maxReps: Int, showPrChips: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             "${set.weightKg.displayKg()}kg×${set.reps}",
@@ -138,6 +131,13 @@ private fun SetRow(set: WorkoutSet, maxWeight: Double, maxVolume: Double, showPr
                 "容量PR",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.tertiary
+            )
+        }
+        if (!showPrChips && set.reps == maxReps) {
+            Text(
+                "次数PR",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
