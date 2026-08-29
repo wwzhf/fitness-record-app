@@ -135,4 +135,12 @@ class DaoTest {
         assertEquals(60.0, rows[0].set.weightKg, 0.001)
         assertEquals(2, rows[1].set.setOrder)
     }
+
+    @Test
+    fun setSessionTitleUpdatesTitle() = runBlocking {
+        val dao = db.workoutDao()
+        val s = dao.insertSession(WorkoutSession(title = "旧标题", startTime = 1_000))
+        dao.setSessionTitle(s, "新标题")
+        assertEquals("新标题", dao.getSession(s)!!.title)
+    }
 }

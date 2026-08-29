@@ -13,10 +13,11 @@ import com.wc.workout.data.repository.WorkoutRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class WorkoutSessionViewModel(
     private val workoutRepo: WorkoutRepository,
@@ -24,8 +25,14 @@ class WorkoutSessionViewModel(
     private val sessionId: Long,
 ) : ViewModel() {
 
-    val session: StateFlow<WorkoutSession?> = flow { emit(workoutRepo.getSession(sessionId)) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    private val _session = MutableStateFlow<WorkoutSession?>(null)
+    val session: StateFlow<WorkoutSession?> = _session.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _session.value = runCatching { workoutRepo.getSession(sessionId) }.getOrNull()
+        }
+    }
 
     private val reload = MutableStateFlow(0)
 
@@ -47,6 +54,15 @@ class WorkoutSessionViewModel(
     val pendingExerciseIds = MutableStateFlow<List<Long>>(emptyList())
 
     fun refresh() { reload.value++ }
+
+    fun setSessionTitle(title: String) {
+        if (title.isBlank()) return
+        viewModelScope.launch {
+            runCatching { workoutRepo.setSessionTitle(sessionId, title.trim()) }
+                .onFailure { Log.w("WorkoutSessionViewModel", "setSessionTitle failed", it) }
+            _session.value = runCatching { workoutRepo.getSession(sessionId) }.getOrNull()
+        }
+    }
 
     /** 返回 false 表示该动作已有卡片（用于提示/滚动定位） */
     suspend fun addPendingExercise(exerciseId: Long): Boolean {

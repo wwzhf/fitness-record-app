@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -64,6 +68,7 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
     var showEndDialog by remember { mutableStateOf(false) }
     var showAbandonDialog by remember { mutableStateOf(false) }
     var showAddSheet by remember { mutableStateOf(false) }
+    var showTitleDialog by remember { mutableStateOf(false) }
     var editingSet by remember { mutableStateOf<WorkoutSet?>(null) }
     var removingCard by remember { mutableStateOf<ExerciseCardUi?>(null) }
 
@@ -72,6 +77,7 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
+    val ended = s.endTime != null
 
     val cards = remember(groups, exercises, pending) {
         val persisted = groups.groupBy { it.set.exerciseId }.map { (exId, rows) ->
@@ -92,8 +98,18 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
         Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(s.title, style = MaterialTheme.typography.titleLarge)
-        ElapsedTimer(startTime = s.startTime, style = MaterialTheme.typography.headlineMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(s.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            IconButton(onClick = { showTitleDialog = true }) { Icon(Icons.Filled.Edit, contentDescription = "修改标题") }
+        }
+        if (ended) {
+            Text(
+                "时长 " + formatDuration((s.endTime!! - s.startTime) / 1000),
+                style = MaterialTheme.typography.headlineMedium
+            )
+        } else {
+            ElapsedTimer(startTime = s.startTime, style = MaterialTheme.typography.headlineMedium)
+        }
 
         if (cards.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -114,9 +130,11 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
         }
 
         Button(onClick = { showAddSheet = true }, modifier = Modifier.fillMaxWidth()) { Text("添加动作") }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { showAbandonDialog = true }, modifier = Modifier.weight(1f)) { Text("放弃") }
-            Button(onClick = { showEndDialog = true }, modifier = Modifier.weight(1f)) { Text("结束健身") }
+        if (!ended) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { showAbandonDialog = true }, modifier = Modifier.weight(1f)) { Text("放弃") }
+                Button(onClick = { showEndDialog = true }, modifier = Modifier.weight(1f)) { Text("结束健身") }
+            }
         }
     }
 
@@ -154,15 +172,25 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
         )
     }
 
-    EndAndAbandonDialogs(
-        groupsEmpty = groups.isEmpty(),
-        showEnd = showEndDialog,
-        onDismissEnd = { showEndDialog = false },
-        onEnd = { scope.launch { vm.endSession(); onFinished() } },
-        showAbandon = showAbandonDialog,
-        onDismissAbandon = { showAbandonDialog = false },
-        onAbandon = { scope.launch { vm.abandon(); onFinished() } }
-    )
+    if (showTitleDialog) {
+        EditTitleDialog(
+            initial = s.title,
+            onSaved = { vm.setSessionTitle(it); showTitleDialog = false },
+            onDismiss = { showTitleDialog = false }
+        )
+    }
+
+    if (!ended) {
+        EndAndAbandonDialogs(
+            groupsEmpty = groups.isEmpty(),
+            showEnd = showEndDialog,
+            onDismissEnd = { showEndDialog = false },
+            onEnd = { scope.launch { vm.endSession(); onFinished() } },
+            showAbandon = showAbandonDialog,
+            onDismissAbandon = { showAbandonDialog = false },
+            onAbandon = { scope.launch { vm.abandon(); onFinished() } }
+        )
+    }
 }
 
 @Composable
@@ -208,6 +236,7 @@ private fun ExerciseCard(
     }
     var weight by remember(card.exercise.id) { mutableStateOf("") }
     var reps by remember(card.exercise.id) { mutableStateOf("") }
+    var entryVisible by remember(card.exercise.id) { mutableStateOf(false) }
     LaunchedEffect(last) {
         val first = last.firstOrNull()
         if (first != null && weight.isBlank() && reps.isBlank()) {
@@ -239,30 +268,41 @@ private fun ExerciseCard(
                     Text("${set.weightKg.displayKg()}kg × ${set.reps} 次")
                 }
             }
-            if (card.pending) {
-                Text(
-                    "将从第一组开始记录",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = weight, onValueChange = { weight = it },
-                    label = { Text("重量 kg") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true, modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = reps, onValueChange = { reps = it },
-                    label = { Text("次数") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true, modifier = Modifier.weight(1f)
-                )
-                Button(
-                    onClick = { onAddSet(weight.toDouble(), reps.toInt()); reps = "" },
-                    enabled = valid
-                ) { Text("添加") }
+            if (!entryVisible) {
+                if (card.pending) {
+                    Text(
+                        "将从第一组开始记录",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                OutlinedButton(onClick = { entryVisible = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("+ 添加一组")
+                }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = weight, onValueChange = { weight = it },
+                        label = { Text("重量 kg") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true, modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = reps, onValueChange = { reps = it },
+                        label = { Text("次数") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true, modifier = Modifier.weight(1f)
+                    )
+                    Button(
+                        onClick = {
+                            onAddSet(weight.toDouble(), reps.toInt())
+                            reps = ""
+                            entryVisible = false
+                        },
+                        enabled = valid
+                    ) { Text("添加") }
+                    TextButton(onClick = { entryVisible = false }) { Text("收起") }
+                }
             }
         }
     }

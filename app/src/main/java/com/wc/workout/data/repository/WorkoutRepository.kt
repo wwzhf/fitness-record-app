@@ -17,6 +17,8 @@ class WorkoutRepository(private val db: AppDatabase) {
 
     suspend fun abandonSession(id: Long) = dao.deleteSession(id)
 
+    suspend fun setSessionTitle(id: Long, title: String) = dao.setSessionTitle(id, title)
+
     fun observeOngoing(): Flow<WorkoutSession?> = dao.observeOngoing()
 
     fun observeSessionsBetween(startMillis: Long, endMillis: Long): Flow<List<WorkoutSession>> =

@@ -27,6 +27,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -39,7 +40,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.wc.workout.AppContainer
 import com.wc.workout.data.local.SetWithExercise
 import com.wc.workout.data.local.WeightRecord
@@ -58,7 +62,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CalendarScreen(container: AppContainer) {
+fun CalendarScreen(container: AppContainer, onOpenSession: (Long) -> Unit) {
     val vm: CalendarViewModel = viewModelWith {
         CalendarViewModel(container.weightRepository, container.workoutRepository)
     }
@@ -101,7 +105,7 @@ fun CalendarScreen(container: AppContainer) {
     }
 
     selected?.let { date ->
-        DayDetailSheet(date, vm, onDismiss = { vm.selectDay(null) })
+        DayDetailSheet(date, vm, onDismiss = { vm.selectDay(null) }, onOpenSession = onOpenSession)
     }
 }
 
@@ -179,18 +183,40 @@ private fun DayCell(
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            daySessions.take(3).forEach {
-                Box(Modifier.size(4.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiary))
-            }
+        val titles = daySessions.sortedBy { it.startTime }.map { it.title }
+        titles.take(2).forEach { t ->
+            Text(
+                t,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        if (titles.size > 2) {
+            Text(
+                "+${titles.size - 2}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DayDetailSheet(date: LocalDate, vm: CalendarViewModel, onDismiss: () -> Unit) {
+private fun DayDetailSheet(
+    date: LocalDate,
+    vm: CalendarViewModel,
+    onDismiss: () -> Unit,
+    onOpenSession: (Long) -> Unit
+) {
     var refresh by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { refresh++ }
     val dayWeight by produceState<WeightRecord?>(initialValue = null, date, refresh) {
         value = vm.weightFor(date)
     }
@@ -229,7 +255,13 @@ private fun DayDetailSheet(date: LocalDate, vm: CalendarViewModel, onDismiss: ()
                 )
             } else {
                 daySessions.forEach { session ->
-                    SessionCard(session = session, vm = vm, onDeleted = { refresh++ })
+                    SessionCard(
+                        session = session,
+                        vm = vm,
+                        refresh = refresh,
+                        onOpenSession = onOpenSession,
+                        onDeleted = { refresh++ }
+                    )
                 }
             }
         }
@@ -245,19 +277,24 @@ private fun DayDetailSheet(date: LocalDate, vm: CalendarViewModel, onDismiss: ()
 }
 
 @Composable
-private fun SessionCard(session: WorkoutSession, vm: CalendarViewModel, onDeleted: () -> Unit) {
+private fun SessionCard(
+    session: WorkoutSession,
+    vm: CalendarViewModel,
+    refresh: Int,
+    onOpenSession: (Long) -> Unit,
+    onDeleted: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<List<SetWithExercise>>(emptyList()) }
     var showDelete by remember { mutableStateOf(false) }
 
+    LaunchedEffect(session.id, refresh, expanded) {
+        if (expanded) detail = vm.sessionDetail(session.id)
+    }
+
     ElevatedCard(
-        Modifier.fillMaxWidth().clickable {
-            expanded = !expanded
-            if (expanded && detail.isEmpty()) {
-                scope.launch { detail = vm.sessionDetail(session.id) }
-            }
-        }
+        Modifier.fillMaxWidth().clickable { expanded = !expanded }
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(session.title, style = MaterialTheme.typography.titleMedium)
@@ -276,8 +313,11 @@ private fun SessionCard(session: WorkoutSession, vm: CalendarViewModel, onDelete
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
-                TextButton(onClick = { showDelete = true }) {
-                    Text("删除该次记录", color = MaterialTheme.colorScheme.error)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { onOpenSession(session.id) }) { Text("编辑") }
+                    TextButton(onClick = { showDelete = true }) {
+                        Text("删除该次记录", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }

@@ -72,7 +72,7 @@ fun WorkoutRoot(container: AppContainer) {
             composable("home") {
                 HomeScreen(container, onStartWorkout = { id -> navController.navigate("workout/$id") })
             }
-            composable("calendar") { CalendarScreen(container) }
+            composable("calendar") { CalendarScreen(container, onOpenSession = { navController.navigate("workout/$it") }) }
             composable("library") { ExerciseLibraryScreen(container) }
             composable("trend") { TrendScreen(container) }
             composable(
