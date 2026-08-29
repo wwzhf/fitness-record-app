@@ -153,4 +153,14 @@ class DaoTest {
         assertNull(dao.getByDate(200))
         assertEquals(71.0, dao.getByDate(201)!!.weightKg, 0.001)
     }
+
+    @Test
+    fun migrationSqlDeletesOnlyBogusWeightDates() = runBlocking {
+        val dao = db.weightDao()
+        dao.insert(WeightRecord(dateEpochDay = 20101, weightKg = 51.8, recordedAt = 1_000))   // 2025-01-13, 合法
+        dao.insert(WeightRecord(dateEpochDay = 739264, weightKg = 99.9, recordedAt = 2_000))  // Excel 导入 bug 的坏行
+        db.openHelper.writableDatabase.execSQL("DELETE FROM weight_records WHERE dateEpochDay > 100000")
+        assertNull(dao.getByDate(739264))
+        assertEquals(51.8, dao.getByDate(20101)!!.weightKg, 0.001)
+    }
 }
