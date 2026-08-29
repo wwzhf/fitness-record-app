@@ -79,7 +79,7 @@ fun WeightLineChart(points: List<Pair<Long, Double>>, modifier: Modifier = Modif
             )
         }
 
-        // X 轴日期刻度：4 个刻度线 + 底部标签
+        // X 轴日期刻度：数量随跨度自适应并去重，避免标签重叠
         val tickPaint = android.graphics.Paint().apply {
             textSize = 10.sp.toPx()
             color = android.graphics.Color.GRAY
@@ -87,11 +87,16 @@ fun WeightLineChart(points: List<Pair<Long, Double>>, modifier: Modifier = Modif
         }
         val minDay = points.first().first
         val maxDay = points.last().first
-        val dateFmt = DateTimeFormatter.ofPattern(if (maxDay - minDay <= 400) "MM-dd" else "yyyy-MM")
+        val spanDays = maxDay - minDay
+        val tickCount = minOf(4, spanDays.toInt() + 1).coerceAtLeast(2)
+        val dateFmt = DateTimeFormatter.ofPattern(if (spanDays <= 400) "MM-dd" else "yyyy-MM")
         val zone = ZoneId.systemDefault()
         val tickLen = 6.dp.toPx()
-        for (i in 0..3) {
-            val day = (minDay + (maxDay - minDay) * i / 3.0).toLong()
+        val tickDays = (0 until tickCount).map { i ->
+            if (tickCount == 1) minDay
+            else minDay + Math.round(spanDays * i.toDouble() / (tickCount - 1)).toLong()
+        }.distinct()
+        tickDays.forEachIndexed { idx, day ->
             val x = px(day)
             drawLine(
                 color = gridColor,
@@ -101,9 +106,9 @@ fun WeightLineChart(points: List<Pair<Long, Double>>, modifier: Modifier = Modif
             )
             val label = Instant.ofEpochMilli(day * 86_400_000).atZone(zone).toLocalDate().format(dateFmt)
             val w = tickPaint.measureText(label)
-            val tx = when (i) {
+            val tx = when (idx) {
                 0 -> x
-                3 -> x - w
+                tickDays.lastIndex -> x - w
                 else -> x - w / 2
             }
             drawContext.canvas.nativeCanvas.drawText(label, tx, size.height - 4f, tickPaint)
