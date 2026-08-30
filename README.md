@@ -43,7 +43,7 @@
 | 架构 | 单模块 MVVM：Screen → ViewModel → Repository → DAO，手写 `AppContainer` 依赖注入 |
 | 导航 | Navigation Compose |
 | 序列化 | kotlinx-serialization（备份 JSON） |
-| 测试 | JUnit4 + Robolectric + Room MigrationTestHelper，47 个单元测试覆盖数据层、迁移路径与 ViewModel（纯 JVM 运行，无需真机） |
+| 测试 | JUnit4 + Robolectric + Room MigrationTestHelper，50 个单元测试覆盖数据层、迁移路径与 ViewModel（纯 JVM 运行，无需真机） |
 | 兼容 | minSdk 26（Android 8.0+），targetSdk 35；Release 构建 R8 压缩 + 资源收缩（APK < 2MB） |
 
 ## 构建
@@ -118,6 +118,7 @@ docs/superpowers/
 | v1.2.2 | 纯自重动作 PR 修正为按「次数PR」计算 |
 | v1.2.3 | 自重动作支持：重量可录 0（显示「自重×N」），次数PR 真正可用；动作历史页实时刷新；重复添加动作给出提示 |
 | v1.2.4 | 会话内动作拖拽排序：拖动柄长按拖动（带震动反馈、边缘自动滚动），松手后顺序写回数据库 |
+| v1.2.5 | 修复动作历史头部：最大重量并列时显示次数最多的那组（如 35kg×5 与 35kg×6 显示 ×6） |
 
 各版本的 APK 与发布说明见 [Releases](https://github.com/wwzhf/fitness-record-app/releases)。
 
