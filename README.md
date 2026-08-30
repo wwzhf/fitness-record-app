@@ -2,7 +2,7 @@
 
 一个面向个人使用的**纯本地**健身记录 Android 应用。无账号、无联网、无广告——所有数据只存在你的手机里。
 
-用 Kotlin + Jetpack Compose 从零实现，单模块 MVVM 架构，适合作为 Compose + Room 本地应用开发的参考项目。
+用 Kotlin + Jetpack Compose 从零实现，单模块 MVVM 架构，适合作为 Compose + Room 本地应用开发的项目。
 
 ## 功能
 
