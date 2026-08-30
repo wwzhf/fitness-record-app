@@ -13,6 +13,7 @@
 - **健身计时** — 开始/结束自动计算时长；开始时间即时落库，App 被系统杀死后重新打开计时依然正确
 - **补记过去的训练** — 日历里选一天即可补记：标题 + 开始/结束时间，创建后直接补录动作与每组数据
 - **自定义动作库** — 动作名完全自己起；有历史记录的动作只归档不删除，历史数据永远可查
+- **会话内动作排序** — 拖动卡片上的拖动柄即可调整动作顺序（临时换计划时有用），松手后顺序写回数据库，日历详情同步跟随
 - **训练记录** — 逐动作、逐组记录重量 × 次数（重量填 0 表示自重，如引体向上、俯卧撑）；组录入按需展开，录完自动收起
 - **历史查看** — 点日历任意日期查看当日全部训练，可展开每个动作的每组数据与时长；已结束的训练可再次编辑
 
@@ -42,7 +43,7 @@
 | 架构 | 单模块 MVVM：Screen → ViewModel → Repository → DAO，手写 `AppContainer` 依赖注入 |
 | 导航 | Navigation Compose |
 | 序列化 | kotlinx-serialization（备份 JSON） |
-| 测试 | JUnit4 + Robolectric + Room MigrationTestHelper，45 个单元测试覆盖数据层、迁移路径与 ViewModel（纯 JVM 运行，无需真机） |
+| 测试 | JUnit4 + Robolectric + Room MigrationTestHelper，47 个单元测试覆盖数据层、迁移路径与 ViewModel（纯 JVM 运行，无需真机） |
 | 兼容 | minSdk 26（Android 8.0+），targetSdk 35；Release 构建 R8 压缩 + 资源收缩（APK < 2MB） |
 
 ## 构建
@@ -116,6 +117,7 @@ docs/superpowers/
 | v1.2.1 | 纯自重动作按「组数PR」计算 |
 | v1.2.2 | 纯自重动作 PR 修正为按「次数PR」计算 |
 | v1.2.3 | 自重动作支持：重量可录 0（显示「自重×N」），次数PR 真正可用；动作历史页实时刷新；重复添加动作给出提示 |
+| v1.2.4 | 会话内动作拖拽排序：拖动柄长按拖动（带震动反馈、边缘自动滚动），松手后顺序写回数据库 |
 
 各版本的 APK 与发布说明见 [Releases](https://github.com/wwzhf/fitness-record-app/releases)。
 
