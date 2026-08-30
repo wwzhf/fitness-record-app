@@ -42,7 +42,7 @@
 | 架构 | 单模块 MVVM：Screen → ViewModel → Repository → DAO，手写 `AppContainer` 依赖注入 |
 | 导航 | Navigation Compose |
 | 序列化 | kotlinx-serialization（备份 JSON） |
-| 测试 | JUnit4 + Robolectric + Room MigrationTestHelper，40 个单元测试覆盖数据层、迁移路径与 ViewModel（纯 JVM 运行，无需真机） |
+| 测试 | JUnit4 + Robolectric + Room MigrationTestHelper，45 个单元测试覆盖数据层、迁移路径与 ViewModel（纯 JVM 运行，无需真机） |
 | 兼容 | minSdk 26（Android 8.0+），targetSdk 35；Release 构建 R8 压缩 + 资源收缩（APK < 2MB） |
 
 ## 构建
