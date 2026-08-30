@@ -95,6 +95,25 @@ class WorkoutSessionViewModelTest {
     }
 
     @Test
+    fun addPendingExerciseRejectsExerciseWithPersistedSets() = runBlocking {
+        val sessionId = workoutRepo.startSession("测试")
+        val exerciseId = (exerciseRepo.addExercise("卧推") as ExerciseNameResult.Success).id
+        workoutRepo.addSet(sessionId, exerciseId, 60.0, 8)
+        val viewModel = vm(sessionId)
+        // stateIn(WhileSubscribed) 需要活跃订阅者，上游 Room 流才会开始生产
+        val collector = launch { viewModel.groups.collect {} }
+        try {
+            // 等 groups 加载出已持久化的组，覆盖"已有组记录"这一重复分支
+            awaitState { viewModel.groups.value.any { it.set.exerciseId == exerciseId } }
+
+            assertFalse(viewModel.addPendingExercise(exerciseId))
+            assertEquals("该动作已在本次训练中", viewModel.snackbarMessage.value?.text)
+        } finally {
+            collector.cancelAndJoin()
+        }
+    }
+
+    @Test
     fun filteredExercisesFiltersByQuery() = runBlocking {
         exerciseRepo.addExercise("卧推")
         exerciseRepo.addExercise("深蹲")
