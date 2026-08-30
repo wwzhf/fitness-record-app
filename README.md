@@ -1,8 +1,25 @@
+<p align="center"><img src="docs/images/icon.png" width="96" alt="健身记录 App 图标"></p>
+
 # 健身记录 Fitness Record
 
 一个面向个人使用的**纯本地**健身记录 Android 应用。无账号、无联网、无广告——所有数据只存在你的手机里。
 
 用 Kotlin + Jetpack Compose 从零实现，单模块 MVVM 架构，适合作为 Compose + Room 本地应用开发的项目。
+
+## 应用截图
+
+| 训练 | 日历 | 动作库 | 趋势 |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/images/home.jpg" width="240"/> | <img src="docs/images/calendar.jpg" width="240"/> | <img src="docs/images/library.jpg" width="240"/> | <img src="docs/images/trend.jpg" width="240"/> |
+
+## 适配平台
+
+| 项 | 说明 |
+|---|---|
+| 系统版本 | Android 8.0（API 26）及以上，已适配至 Android 15（targetSdk 35） |
+| 设备 | 手机为主，未锁定屏幕方向，平板亦可安装使用 |
+| 安装包 | 通用 APK（纯 Kotlin、无原生库），Release 体积 < 2MB |
+| 权限 | 零权限（不含网络），离线可用，无任何厂商/Google 服务依赖 |
 
 ## 功能
 
