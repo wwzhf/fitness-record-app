@@ -42,7 +42,7 @@ fun ExerciseHistoryScreen(container: AppContainer, exerciseId: Long) {
     val allBodyweight = allSets.isNotEmpty() && allSets.all { it.weightKg == 0.0 }
     val maxWeight = allSets.maxOfOrNull { it.weightKg } ?: 0.0
     val maxVolume = allSets.maxOfOrNull { it.weightKg * it.reps } ?: 0.0
-    val bestWeightSet = allSets.firstOrNull { it.weightKg == maxWeight }
+    val bestWeightSet = bestWeightSetOf(allSets)
     val maxReps = if (allBodyweight) allSets.maxOf { it.reps } else 0
     val dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
@@ -142,4 +142,10 @@ private fun SetRow(set: WorkoutSet, maxWeight: Double, maxVolume: Double, maxRep
             )
         }
     }
+}
+
+/** 头部"最大重量"展示用的代表组：最大重量并列时取次数最多的一组（如 35kg×5 与 35kg×6 取 ×6） */
+fun bestWeightSetOf(sets: List<WorkoutSet>): WorkoutSet? {
+    val maxWeight = sets.maxOfOrNull { it.weightKg } ?: return null
+    return sets.filter { it.weightKg == maxWeight }.maxByOrNull { it.reps }
 }
