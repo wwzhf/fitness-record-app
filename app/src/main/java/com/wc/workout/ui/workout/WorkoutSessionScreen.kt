@@ -125,8 +125,11 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
     val lazyListState = rememberLazyListState()
     val haptics = LocalHapticFeedback.current
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        displayCards = displayCards.toMutableList().apply { add(to.index, removeAt(from.index)) }
-        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        // 挂起动作固定在末尾，拒绝涉及挂起卡片的移动
+        if (!displayCards[from.index].pending && !displayCards[to.index].pending) {
+            displayCards = displayCards.toMutableList().apply { add(to.index, removeAt(from.index)) }
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
     }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { _ ->
@@ -176,15 +179,20 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
                             ExerciseCard(
                                 card = card,
                                 isDragging = itemDragging,
-                                dragHandle = if (card.pending) Modifier else Modifier.draggableHandle(
+                                dragHandle = Modifier.draggableHandle(
                                     onDragStarted = {
                                         isReordering = true
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                     },
                                     onDragStopped = {
                                         isReordering = false
-                                        scope.launch {
-                                            vm.reorderExercises(displayCards.filter { !it.pending }.map { it.exercise.id })
+                                        // 先同步捕获当前顺序再发起写回，避免协程启动前被重同步抢先；
+                                        // 无实际移动则跳过；写回失败时回退本地顺序并提示
+                                        val orderedIds = displayCards.filter { !it.pending }.map { it.exercise.id }
+                                        if (orderedIds != cards.filter { !it.pending }.map { it.exercise.id }) {
+                                            scope.launch {
+                                                if (!vm.reorderExercises(orderedIds)) displayCards = cards
+                                            }
                                         }
                                     }
                                 ),

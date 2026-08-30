@@ -127,11 +127,16 @@ class WorkoutSessionViewModel(
         pendingExerciseIds.value = pendingExerciseIds.value - exerciseId
     }
 
-    /** 拖拽排序结束后按展示顺序重写 exerciseOrder（1..N）；无组记录的挂起动作不参与 */
-    suspend fun reorderExercises(orderedExerciseIds: List<Long>) {
-        if (orderedExerciseIds.isEmpty()) return
-        runCatching { workoutRepo.reorderSessionExercises(sessionId, orderedExerciseIds) }
-            .onFailure { Log.w("WorkoutSessionViewModel", "reorderExercises failed", it) }
+    /** 拖拽排序结束后按展示顺序重写 exerciseOrder（1..N）；无组记录的挂起动作不参与。
+     *  返回是否成功，失败时发出 Snackbar 提示（调用方应把本地顺序回退为 DB 顺序） */
+    suspend fun reorderExercises(orderedExerciseIds: List<Long>): Boolean {
+        if (orderedExerciseIds.isEmpty()) return true
+        return runCatching { workoutRepo.reorderSessionExercises(sessionId, orderedExerciseIds) }
+            .onFailure {
+                Log.w("WorkoutSessionViewModel", "reorderExercises failed", it)
+                _snackbarMessage.value = SnackbarMessage(++snackbarSeq, "排序保存失败，请重试")
+            }
+            .isSuccess
     }
 
     suspend fun lastPerformance(exerciseId: Long): List<WorkoutSet> =
