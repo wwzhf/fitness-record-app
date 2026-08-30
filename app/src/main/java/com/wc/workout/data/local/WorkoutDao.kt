@@ -105,5 +105,8 @@ interface WorkoutDao {
            WHERE EXISTS(SELECT 1 FROM workout_sets ws WHERE ws.sessionId = s.id AND ws.exerciseId = :exerciseId)
            ORDER BY s.startTime DESC"""
     )
-    suspend fun getSessionsForExercise(exerciseId: Long): List<WorkoutSession>
+    fun observeSessionsForExercise(exerciseId: Long): Flow<List<WorkoutSession>>
+
+    @Query("SELECT * FROM workout_sets WHERE exerciseId = :exerciseId ORDER BY setOrder")
+    fun observeSetsOfExercise(exerciseId: Long): Flow<List<WorkoutSet>>
 }

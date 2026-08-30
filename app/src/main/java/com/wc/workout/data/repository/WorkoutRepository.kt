@@ -7,6 +7,7 @@ import com.wc.workout.data.local.SetWithExercise
 import com.wc.workout.data.local.WorkoutSession
 import com.wc.workout.data.local.WorkoutSet
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 
 /** 某动作的一次历史训练及其该动作的全部组记录 */
 data class ExerciseHistoryEntry(val session: WorkoutSession, val sets: List<WorkoutSet>)
@@ -77,8 +78,9 @@ class WorkoutRepository(private val db: AppDatabase) {
         dao.getSetsOfExercise(sessionId, exerciseId).forEach { dao.deleteSet(it.id) }
     }
 
-    suspend fun getExerciseHistory(exerciseId: Long): List<ExerciseHistoryEntry> {
-        val sessions = dao.getSessionsForExercise(exerciseId)
-        return sessions.map { s -> ExerciseHistoryEntry(s, dao.getSetsOfExercise(s.id, exerciseId)) }
-    }
+    /** 某动作的全部历史训练（按开始时间倒序），组或会话数据变化时实时刷新 */
+    fun observeExerciseHistory(exerciseId: Long): Flow<List<ExerciseHistoryEntry>> =
+        combine(dao.observeSessionsForExercise(exerciseId), dao.observeSetsOfExercise(exerciseId)) { sessions, sets ->
+            sessions.map { s -> ExerciseHistoryEntry(s, sets.filter { it.sessionId == s.id }) }
+        }
 }

@@ -31,8 +31,8 @@ import com.wc.workout.data.local.SetWithExercise
 import com.wc.workout.data.local.WeightRecord
 import com.wc.workout.data.local.WorkoutSession
 import com.wc.workout.ui.common.WeightEditDialog
-import com.wc.workout.ui.common.displayKg
 import com.wc.workout.ui.common.formatDuration
+import com.wc.workout.ui.common.formatSetSummary
 import com.wc.workout.ui.common.formatTime
 import com.wc.workout.ui.common.kgLabel
 import java.time.LocalDate
@@ -180,16 +180,19 @@ private fun SessionCard(
                 }
                 if (detail.isNotEmpty()) {
                     val totalVolume = detail.sumOf { it.set.weightKg * it.set.reps }
-                    Text(
-                        "总容量 %,d kg".format(totalVolume.toLong()),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // 全自重训练容量为 0，不展示该行
+                    if (totalVolume > 0) {
+                        Text(
+                            "总容量 %,d kg".format(totalVolume.toLong()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 detail.groupBy { it.set.exerciseOrder }.toSortedMap().forEach { (_, rows) ->
                     Text(
                         "${rows.first().exerciseName}：" +
-                            rows.joinToString(", ") { "${it.set.weightKg.displayKg()}kg×${it.set.reps}" },
+                            rows.joinToString(", ") { formatSetSummary(it.set.weightKg, it.set.reps) },
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }

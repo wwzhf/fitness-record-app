@@ -8,18 +8,18 @@ import com.wc.workout.data.repository.ExerciseRepository
 import com.wc.workout.data.repository.WorkoutRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 
 class ExerciseHistoryViewModel(
-    private val repo: WorkoutRepository,
+    repo: WorkoutRepository,
     exerciseRepo: ExerciseRepository,
     exerciseId: Long
 ) : ViewModel() {
 
-    val exercise: StateFlow<Exercise?> = flow { emit(exerciseRepo.getById(exerciseId)) }
+    val exercise: StateFlow<Exercise?> = exerciseRepo.observeById(exerciseId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val entries: StateFlow<List<ExerciseHistoryEntry>> = flow { emit(repo.getExerciseHistory(exerciseId)) }
+    /** 动作名或组数据变化时实时刷新（如在训练页补录组后返回本页） */
+    val entries: StateFlow<List<ExerciseHistoryEntry>> = repo.observeExerciseHistory(exerciseId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }

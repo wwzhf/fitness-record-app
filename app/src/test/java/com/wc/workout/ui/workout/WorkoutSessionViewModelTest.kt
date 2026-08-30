@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -78,15 +79,19 @@ class WorkoutSessionViewModelTest {
     }
 
     @Test
-    fun addPendingExerciseDeduplicates() = runBlocking {
+    fun addPendingExerciseDeduplicatesWithSnackbar() = runBlocking {
         val sessionId = workoutRepo.startSession("测试")
         val exerciseId = (exerciseRepo.addExercise("卧推") as ExerciseNameResult.Success).id
         val viewModel = vm(sessionId)
 
         assertTrue(viewModel.addPendingExercise(exerciseId))
-        assertTrue(viewModel.addPendingExercise(exerciseId))
+        assertFalse(viewModel.addPendingExercise(exerciseId))
 
         assertEquals(listOf(exerciseId), viewModel.pendingExerciseIds.value)
+        assertEquals("该动作已在本次训练中", viewModel.snackbarMessage.value?.text)
+
+        viewModel.onSnackbarShown()
+        assertNull(viewModel.snackbarMessage.value)
     }
 
     @Test

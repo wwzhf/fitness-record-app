@@ -53,4 +53,6 @@ class ExerciseRepository(private val db: AppDatabase) {
     }
 
     suspend fun getById(id: Long): Exercise? = dao.getById(id)
+
+    fun observeById(id: Long): Flow<Exercise?> = dao.observeById(id)
 }

@@ -29,7 +29,8 @@ fun SetEditDialog(
 ) {
     var weight by remember { mutableStateOf(set.weightKg.displayKg()) }
     var reps by remember { mutableStateOf(set.reps.toString()) }
-    val valid = (weight.toDoubleOrNull()?.takeIf { it > 0.0 } != null) &&
+    // 重量 0 表示自重动作（引体向上、俯卧撑等）
+    val valid = (weight.toDoubleOrNull()?.takeIf { it >= 0.0 } != null) &&
         (reps.toIntOrNull()?.takeIf { it > 0 } != null)
 
     AlertDialog(

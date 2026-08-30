@@ -27,6 +27,14 @@ fun Double.kgLabel(): String = String.format(Locale.US, "%.1f", this)
 fun Double.displayKg(): String =
     if (this % 1.0 == 0.0) toInt().toString() else toString()
 
+/** 组记录紧凑展示（"上次"参考、历史页、日历详情）：0kg 表示自重 → "自重×12"，负重 → "60kg×12" */
+fun formatSetSummary(weightKg: Double, reps: Int): String =
+    if (weightKg == 0.0) "自重×$reps" else "${weightKg.displayKg()}kg×$reps"
+
+/** 组记录行展示（训练页组列表）：0kg 表示自重 → "自重 × 12 次"，负重 → "60kg × 12 次" */
+fun formatSetRow(weightKg: Double, reps: Int): String =
+    if (weightKg == 0.0) "自重 × $reps 次" else "${weightKg.displayKg()}kg × $reps 次"
+
 /** 当天 00:00 的 epoch millis（本地时区） */
 fun startOfDayMillis(d: LocalDate): Long =
     d.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()

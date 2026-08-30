@@ -50,6 +50,15 @@ class WorkoutSessionViewModel(
     /** 已选但尚无组记录的动作（未持久化，仅本次页面生命周期） */
     val pendingExerciseIds = MutableStateFlow<List<Long>>(emptyList())
 
+    /** 一次性提示（如重复添加动作）；id 保证相同文案也能连续触发 */
+    private var snackbarSeq = 0L
+    private val _snackbarMessage = MutableStateFlow<SnackbarMessage?>(null)
+    val snackbarMessage: StateFlow<SnackbarMessage?> = _snackbarMessage.asStateFlow()
+
+    fun onSnackbarShown() {
+        _snackbarMessage.value = null
+    }
+
     fun setSessionTitle(title: String) {
         if (title.isBlank()) return
         viewModelScope.launch {
@@ -78,12 +87,13 @@ class WorkoutSessionViewModel(
         }
     }
 
-    /** 返回 false 表示该动作已有卡片（用于提示/滚动定位） */
+    /** 返回 false 表示该动作已在本次训练中（已有组或已挂起），同时发出 Snackbar 提示 */
     suspend fun addPendingExercise(exerciseId: Long): Boolean {
-        if (groups.value.any { it.set.exerciseId == exerciseId }) return false
-        if (exerciseId !in pendingExerciseIds.value) {
-            pendingExerciseIds.value = pendingExerciseIds.value + exerciseId
+        if (groups.value.any { it.set.exerciseId == exerciseId } || exerciseId in pendingExerciseIds.value) {
+            _snackbarMessage.value = SnackbarMessage(++snackbarSeq, "该动作已在本次训练中")
+            return false
         }
+        pendingExerciseIds.value = pendingExerciseIds.value + exerciseId
         return true
     }
 
@@ -130,3 +140,6 @@ class WorkoutSessionViewModel(
             .onFailure { Log.w("WorkoutSessionViewModel", "abandon failed", it) }
     }
 }
+
+/** 训练页 Snackbar 消息；id 用于相同文案也能再次触发 */
+data class SnackbarMessage(val id: Long, val text: String)

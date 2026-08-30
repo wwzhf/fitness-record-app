@@ -22,6 +22,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,6 +47,8 @@ import com.wc.workout.data.local.Exercise
 import com.wc.workout.data.local.WorkoutSet
 import com.wc.workout.ui.common.displayKg
 import com.wc.workout.ui.common.formatDuration
+import com.wc.workout.ui.common.formatSetRow
+import com.wc.workout.ui.common.formatSetSummary
 import com.wc.workout.ui.common.viewModelWith
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,6 +70,14 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
     val groups by vm.groups.collectAsState()
     val exercises by vm.exercises.collectAsState()
     val pending by vm.pendingExerciseIds.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarMessage by vm.snackbarMessage.collectAsState()
+    LaunchedEffect(snackbarMessage?.id) {
+        snackbarMessage?.let {
+            snackbarHostState.showSnackbar(it.text)
+            vm.onSnackbarShown()
+        }
+    }
     var showEndDialog by remember { mutableStateOf(false) }
     var showAbandonDialog by remember { mutableStateOf(false) }
     var showAddSheet by remember { mutableStateOf(false) }
@@ -96,60 +109,62 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
         persisted + pendingCards
     }
 
-    Column(
-        Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(s.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            IconButton(onClick = { showTitleDialog = true }) { Icon(Icons.Filled.Edit, contentDescription = "修改标题") }
-        }
-        if (ended) {
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { _ ->
+        Column(
+            Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(s.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                IconButton(onClick = { showTitleDialog = true }) { Icon(Icons.Filled.Edit, contentDescription = "修改标题") }
+            }
+            if (ended) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "时长 " + formatDuration((s.endTime!! - s.startTime) / 1000),
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { showDurationDialog = true }) { Icon(Icons.Filled.Edit, contentDescription = "修改时长") }
+                }
+            } else {
+                ElapsedTimer(startTime = s.startTime, style = MaterialTheme.typography.headlineMedium)
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { showNoteDialog = true }) {
                 Text(
-                    "时长 " + formatDuration((s.endTime!! - s.startTime) / 1000),
-                    style = MaterialTheme.typography.headlineMedium,
+                    if (s.note.isBlank()) "添加备注" else "备注：${s.note}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (s.note.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = { showDurationDialog = true }) { Icon(Icons.Filled.Edit, contentDescription = "修改时长") }
+                IconButton(onClick = { showNoteDialog = true }) { Icon(Icons.Filled.Edit, contentDescription = "修改备注") }
             }
-        } else {
-            ElapsedTimer(startTime = s.startTime, style = MaterialTheme.typography.headlineMedium)
-        }
 
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { showNoteDialog = true }) {
-            Text(
-                if (s.note.isBlank()) "添加备注" else "备注：${s.note}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (s.note.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = { showNoteDialog = true }) { Icon(Icons.Filled.Edit, contentDescription = "修改备注") }
-        }
-
-        if (cards.isEmpty()) {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("点下方按钮添加第一个动作", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(cards, key = { it.exercise.id }) { card ->
-                    ExerciseCard(
-                        card = card,
-                        onLoadLast = { vm.lastPerformance(card.exercise.id) },
-                        onAddSet = { w, r -> scope.launch { vm.addSet(card.exercise.id, w, r) } },
-                        onEditSet = { editingSet = it },
-                        onRemove = { removingCard = card }
-                    )
+            if (cards.isEmpty()) {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("点下方按钮添加第一个动作", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(cards, key = { it.exercise.id }) { card ->
+                        ExerciseCard(
+                            card = card,
+                            onLoadLast = { vm.lastPerformance(card.exercise.id) },
+                            onAddSet = { w, r -> scope.launch { vm.addSet(card.exercise.id, w, r) } },
+                            onEditSet = { editingSet = it },
+                            onRemove = { removingCard = card }
+                        )
+                    }
                 }
             }
-        }
 
-        Button(onClick = { showAddSheet = true }, modifier = Modifier.fillMaxWidth()) { Text("添加动作") }
-        if (!ended) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { showAbandonDialog = true }, modifier = Modifier.weight(1f)) { Text("放弃") }
-                Button(onClick = { showEndDialog = true }, modifier = Modifier.weight(1f)) { Text("结束健身") }
+            Button(onClick = { showAddSheet = true }, modifier = Modifier.fillMaxWidth()) { Text("添加动作") }
+            if (!ended) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { showAbandonDialog = true }, modifier = Modifier.weight(1f)) { Text("放弃") }
+                    Button(onClick = { showEndDialog = true }, modifier = Modifier.weight(1f)) { Text("结束健身") }
+                }
             }
         }
     }
@@ -276,7 +291,8 @@ private fun ExerciseCard(
             reps = first.reps.toString()
         }
     }
-    val valid = (weight.toDoubleOrNull()?.takeIf { it > 0.0 } != null) &&
+    // 重量 0 表示自重动作（引体向上、俯卧撑等）
+    val valid = (weight.toDoubleOrNull()?.takeIf { it >= 0.0 } != null) &&
         (reps.toIntOrNull()?.takeIf { it > 0 } != null)
 
     Card(Modifier.fillMaxWidth()) {
@@ -287,7 +303,7 @@ private fun ExerciseCard(
             }
             if (last.isNotEmpty()) {
                 Text(
-                    "上次：" + last.joinToString(", ") { "${it.weightKg.displayKg()}kg×${it.reps}" },
+                    "上次：" + last.joinToString(", ") { formatSetSummary(it.weightKg, it.reps) },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -297,7 +313,7 @@ private fun ExerciseCard(
                     Modifier.fillMaxWidth().clickable { onEditSet(set) }.padding(vertical = 4.dp)
                 ) {
                     Text("第 ${set.setOrder} 组", modifier = Modifier.weight(1f))
-                    Text("${set.weightKg.displayKg()}kg × ${set.reps} 次")
+                    Text(formatSetRow(set.weightKg, set.reps))
                 }
             }
             if (!entryVisible) {

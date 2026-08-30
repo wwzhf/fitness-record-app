@@ -23,6 +23,7 @@ import com.wc.workout.data.local.WorkoutSet
 import com.wc.workout.data.repository.ExerciseHistoryEntry
 import com.wc.workout.ui.common.displayKg
 import com.wc.workout.ui.common.formatDuration
+import com.wc.workout.ui.common.formatSetSummary
 import com.wc.workout.ui.common.formatTime
 import com.wc.workout.ui.common.viewModelWith
 import java.time.Instant
@@ -115,7 +116,7 @@ private fun HistoryCard(
 private fun SetRow(set: WorkoutSet, maxWeight: Double, maxVolume: Double, maxReps: Int, showPrChips: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            "${set.weightKg.displayKg()}kg×${set.reps}",
+            formatSetSummary(set.weightKg, set.reps),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f, fill = false)
         )

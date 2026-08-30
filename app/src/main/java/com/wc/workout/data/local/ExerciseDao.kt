@@ -36,6 +36,9 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): Exercise?
 
+    @Query("SELECT * FROM exercises WHERE id = :id LIMIT 1")
+    fun observeById(id: Long): Flow<Exercise?>
+
     @Insert
     suspend fun insert(exercise: Exercise): Long
 
