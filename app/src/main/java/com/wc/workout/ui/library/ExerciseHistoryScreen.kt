@@ -40,7 +40,6 @@ fun ExerciseHistoryScreen(container: AppContainer, exerciseId: Long) {
 
     val allSets = entries.flatMap { it.sets }
     val allBodyweight = allSets.isNotEmpty() && allSets.all { it.weightKg == 0.0 }
-    val maxWeight = allSets.maxOfOrNull { it.weightKg } ?: 0.0
     val maxVolume = allSets.maxOfOrNull { it.weightKg * it.reps } ?: 0.0
     val bestWeightSet = bestWeightSetOf(allSets)
     val maxReps = if (allBodyweight) allSets.maxOf { it.reps } else 0
@@ -73,7 +72,7 @@ fun ExerciseHistoryScreen(container: AppContainer, exerciseId: Long) {
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(entries, key = { it.session.id }) { entry ->
-                    HistoryCard(entry, maxWeight, maxVolume, allBodyweight, maxReps, dateFmt)
+                    HistoryCard(entry, bestWeightSet, maxVolume, allBodyweight, maxReps, dateFmt)
                 }
             }
         }
@@ -83,7 +82,7 @@ fun ExerciseHistoryScreen(container: AppContainer, exerciseId: Long) {
 @Composable
 private fun HistoryCard(
     entry: ExerciseHistoryEntry,
-    maxWeight: Double,
+    bestWeightSet: WorkoutSet?,
     maxVolume: Double,
     allBodyweight: Boolean,
     maxReps: Int,
@@ -106,21 +105,22 @@ private fun HistoryCard(
                 )
             }
             entry.sets.forEach { set ->
-                SetRow(set, maxWeight, maxVolume, maxReps, showPrChips = !allBodyweight)
+                SetRow(set, bestWeightSet, maxVolume, maxReps, showPrChips = !allBodyweight)
             }
         }
     }
 }
 
 @Composable
-private fun SetRow(set: WorkoutSet, maxWeight: Double, maxVolume: Double, maxReps: Int, showPrChips: Boolean) {
+private fun SetRow(set: WorkoutSet, bestWeightSet: WorkoutSet?, maxVolume: Double, maxReps: Int, showPrChips: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             formatSetSummary(set.weightKg, set.reps),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f, fill = false)
         )
-        if (showPrChips && set.weightKg == maxWeight) {
+        // 重量PR 只标最大重量并列中最优的那组（与头部展示一致），容量PR 维持并列都标
+        if (showPrChips && bestWeightSet != null && set.id == bestWeightSet.id) {
             Text(
                 "重量PR",
                 style = MaterialTheme.typography.labelMedium,
@@ -144,7 +144,7 @@ private fun SetRow(set: WorkoutSet, maxWeight: Double, maxVolume: Double, maxRep
     }
 }
 
-/** 头部"最大重量"展示用的代表组：最大重量并列时取次数最多的一组（如 35kg×5 与 35kg×6 取 ×6） */
+/** 头部"最大重量"与重量PR 标记共用的代表组：最大重量并列时取次数最多的一组（如 35kg×5 与 35kg×6 取 ×6） */
 fun bestWeightSetOf(sets: List<WorkoutSet>): WorkoutSet? {
     val maxWeight = sets.maxOfOrNull { it.weightKg } ?: return null
     return sets.filter { it.weightKg == maxWeight }.maxByOrNull { it.reps }
