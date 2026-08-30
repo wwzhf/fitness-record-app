@@ -10,12 +10,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +42,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -50,6 +55,8 @@ import com.wc.workout.ui.common.formatDuration
 import com.wc.workout.ui.common.formatSetRow
 import com.wc.workout.ui.common.formatSetSummary
 import com.wc.workout.ui.common.viewModelWith
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -109,6 +116,19 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
         persisted + pendingCards
     }
 
+    // 拖拽排序期间用本地列表驱动 UI，结束后写回 DB，再由 DB 流同步回来；
+    // 挂起动作（还没录组）没有 exerciseOrder，固定在末尾不参与排序
+    var displayCards by remember { mutableStateOf(cards) }
+    var isReordering by remember { mutableStateOf(false) }
+    LaunchedEffect(cards) { if (!isReordering) displayCards = cards }
+
+    val lazyListState = rememberLazyListState()
+    val haptics = LocalHapticFeedback.current
+    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        displayCards = displayCards.toMutableList().apply { add(to.index, removeAt(from.index)) }
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+    }
+
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { _ ->
         Column(
             Modifier.fillMaxSize().padding(16.dp),
@@ -146,15 +166,34 @@ fun WorkoutSessionScreen(container: AppContainer, sessionId: Long, onFinished: (
                     Text("点下方按钮添加第一个动作", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(cards, key = { it.exercise.id }) { card ->
-                        ExerciseCard(
-                            card = card,
-                            onLoadLast = { vm.lastPerformance(card.exercise.id) },
-                            onAddSet = { w, r -> scope.launch { vm.addSet(card.exercise.id, w, r) } },
-                            onEditSet = { editingSet = it },
-                            onRemove = { removingCard = card }
-                        )
+                LazyColumn(
+                    Modifier.weight(1f),
+                    state = lazyListState,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(displayCards, key = { it.exercise.id }) { card ->
+                        ReorderableItem(reorderableState, key = card.exercise.id) { itemDragging ->
+                            ExerciseCard(
+                                card = card,
+                                isDragging = itemDragging,
+                                dragHandle = if (card.pending) Modifier else Modifier.draggableHandle(
+                                    onDragStarted = {
+                                        isReordering = true
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    },
+                                    onDragStopped = {
+                                        isReordering = false
+                                        scope.launch {
+                                            vm.reorderExercises(displayCards.filter { !it.pending }.map { it.exercise.id })
+                                        }
+                                    }
+                                ),
+                                onLoadLast = { vm.lastPerformance(card.exercise.id) },
+                                onAddSet = { w, r -> scope.launch { vm.addSet(card.exercise.id, w, r) } },
+                                onEditSet = { editingSet = it },
+                                onRemove = { removingCard = card }
+                            )
+                        }
                     }
                 }
             }
@@ -273,6 +312,8 @@ private fun EndAndAbandonDialogs(
 @Composable
 private fun ExerciseCard(
     card: ExerciseCardUi,
+    isDragging: Boolean,
+    dragHandle: Modifier,
     onLoadLast: suspend () -> List<WorkoutSet>,
     onAddSet: (Double, Int) -> Unit,
     onEditSet: (WorkoutSet) -> Unit,
@@ -295,9 +336,21 @@ private fun ExerciseCard(
     val valid = (weight.toDoubleOrNull()?.takeIf { it >= 0.0 } != null) &&
         (reps.toIntOrNull()?.takeIf { it > 0 } != null)
 
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 8.dp else 1.dp)
+    ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!card.pending) {
+                    IconButton(onClick = {}, modifier = dragHandle) {
+                        Icon(
+                            Icons.Filled.DragHandle,
+                            contentDescription = "拖动调整顺序",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 Text(card.exercise.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 TextButton(onClick = onRemove) { Text("移除") }
             }

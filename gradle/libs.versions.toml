@@ -10,6 +10,7 @@ navigationCompose = "2.8.5"
 room = "2.6.1"
 kotlinxSerialization = "1.7.3"
 coroutines = "1.9.0"
+reorderable = "3.1.0"
 junit = "4.13.2"
 robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
@@ -33,6 +34,7 @@ room-testing = { group = "androidx.room", name = "room-testing", version.ref = "
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }

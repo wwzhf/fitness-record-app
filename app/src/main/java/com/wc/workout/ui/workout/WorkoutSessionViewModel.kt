@@ -127,6 +127,13 @@ class WorkoutSessionViewModel(
         pendingExerciseIds.value = pendingExerciseIds.value - exerciseId
     }
 
+    /** 拖拽排序结束后按展示顺序重写 exerciseOrder（1..N）；无组记录的挂起动作不参与 */
+    suspend fun reorderExercises(orderedExerciseIds: List<Long>) {
+        if (orderedExerciseIds.isEmpty()) return
+        runCatching { workoutRepo.reorderSessionExercises(sessionId, orderedExerciseIds) }
+            .onFailure { Log.w("WorkoutSessionViewModel", "reorderExercises failed", it) }
+    }
+
     suspend fun lastPerformance(exerciseId: Long): List<WorkoutSet> =
         workoutRepo.lastPerformance(exerciseId, sessionId)
 

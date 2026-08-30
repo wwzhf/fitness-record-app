@@ -78,6 +78,13 @@ class WorkoutRepository(private val db: AppDatabase) {
         dao.getSetsOfExercise(sessionId, exerciseId).forEach { dao.deleteSet(it.id) }
     }
 
+    /** 重排会话内动作顺序：按传入顺序把 exerciseOrder 重写为 1..N，单事务 */
+    suspend fun reorderSessionExercises(sessionId: Long, orderedExerciseIds: List<Long>) = db.withTransaction {
+        orderedExerciseIds.forEachIndexed { index, exerciseId ->
+            dao.setExerciseOrder(sessionId, exerciseId, index + 1)
+        }
+    }
+
     /** 某动作的全部历史训练（按开始时间倒序），组或会话数据变化时实时刷新 */
     fun observeExerciseHistory(exerciseId: Long): Flow<List<ExerciseHistoryEntry>> =
         combine(dao.observeSessionsForExercise(exerciseId), dao.observeSetsOfExercise(exerciseId)) { sessions, sets ->

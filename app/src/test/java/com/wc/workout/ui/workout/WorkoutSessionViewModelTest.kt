@@ -160,6 +160,26 @@ class WorkoutSessionViewModelTest {
     }
 
     @Test
+    fun reorderExercisesUpdatesGroupsOrder() = runBlocking {
+        val sessionId = workoutRepo.startSession("测试")
+        val a = (exerciseRepo.addExercise("卧推") as ExerciseNameResult.Success).id
+        val b = (exerciseRepo.addExercise("深蹲") as ExerciseNameResult.Success).id
+        workoutRepo.addSet(sessionId, a, 60.0, 8)
+        workoutRepo.addSet(sessionId, b, 80.0, 5)
+        val viewModel = vm(sessionId)
+        val collector = launch { viewModel.groups.collect {} }
+        try {
+            awaitState { viewModel.groups.value.map { it.set.exerciseId } == listOf(a, b) }
+
+            viewModel.reorderExercises(listOf(b, a))
+
+            awaitState { viewModel.groups.value.map { it.set.exerciseId } == listOf(b, a) }
+        } finally {
+            collector.cancelAndJoin()
+        }
+    }
+
+    @Test
     fun createExerciseReturnsNullOnDuplicate() = runBlocking {
         exerciseRepo.addExercise("卧推")
         val viewModel = vm(workoutRepo.startSession("测试"))

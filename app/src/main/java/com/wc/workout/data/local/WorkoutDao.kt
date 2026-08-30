@@ -66,6 +66,9 @@ interface WorkoutDao {
     @Query("SELECT MAX(setOrder) FROM workout_sets WHERE sessionId = :sessionId AND exerciseId = :exerciseId")
     suspend fun maxSetOrder(sessionId: Long, exerciseId: Long): Int?
 
+    @Query("UPDATE workout_sets SET exerciseOrder = :order WHERE sessionId = :sessionId AND exerciseId = :exerciseId")
+    suspend fun setExerciseOrder(sessionId: Long, exerciseId: Long, order: Int)
+
     @Query(
         """SELECT ws.sessionId FROM workout_sets ws
            INNER JOIN workout_sessions s ON s.id = ws.sessionId

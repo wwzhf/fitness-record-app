@@ -152,6 +152,30 @@ class RepositoryTest {
     }
 
     @Test
+    fun reorderSessionExercisesRewritesOrders() = runBlocking {
+        val a = (exerciseRepo.addExercise("卧推") as ExerciseNameResult.Success).id
+        val b = (exerciseRepo.addExercise("飞鸟") as ExerciseNameResult.Success).id
+        val c = (exerciseRepo.addExercise("深蹲") as ExerciseNameResult.Success).id
+        val s = workoutRepo.startSession("推日")
+        workoutRepo.addSet(s, a, 60.0, 8)
+        workoutRepo.addSet(s, a, 60.0, 10)
+        workoutRepo.addSet(s, b, 15.0, 12)
+        workoutRepo.addSet(s, c, 80.0, 5)
+
+        workoutRepo.reorderSessionExercises(s, listOf(c, a, b))
+
+        val sets = db.workoutDao().getSetsForSession(s)
+        assertEquals(listOf(c, a, a, b), sets.map { it.exerciseId })
+        assertEquals(listOf(1, 2, 2, 3), sets.map { it.exerciseOrder })
+        assertEquals(listOf(1, 1, 2, 1), sets.map { it.setOrder })
+
+        // 重排后继续加组：沿用该动作重排后的 exerciseOrder
+        workoutRepo.addSet(s, c, 82.5, 5)
+        val after = db.workoutDao().getSetsForSession(s)
+        assertEquals(1, after.first { it.exerciseId == c && it.weightKg == 82.5 }.exerciseOrder)
+    }
+
+    @Test
     fun addPastSessionAppearsOnItsDay() = runBlocking {
         val day = LocalDate.of(2026, 8, 1)
         val start = day.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
